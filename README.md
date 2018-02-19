@@ -18,7 +18,7 @@ geospatial data formats. This is a mirror of the GDAL Subversion repository.
 
 # Borsch
 
-Borsch repository link: https://github.com/nextgis-borsch/borsch
+[NextGIS Borsch](https://github.com/nextgis-borsch/borsch)
 
 # Sync sources with origin
 
