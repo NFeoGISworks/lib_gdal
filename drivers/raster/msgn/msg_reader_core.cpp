@@ -44,7 +44,7 @@
 #ifdef GDAL_SUPPORT
 #include "cpl_vsi.h"
 
-CPL_CVSID("$Id$");
+CPL_CVSID("$Id$")
 
 #else
 #define VSIFSeek(fp, pos, ref)    CPL_IGNORE_RET_VAL(fseek(fp, pos, ref))
@@ -306,9 +306,13 @@ void Msg_reader_core::read_metadata_block(VSILFILE* fin) {
     }
 
     do {
-        CPL_IGNORE_RET_VAL(VSIFReadL(&gp_header, sizeof(GP_PK_HEADER), 1, fin));
-        CPL_IGNORE_RET_VAL(VSIFReadL(&sub_header, sizeof(GP_PK_SH1), 1, fin));
-        CPL_IGNORE_RET_VAL(VSIFReadL(&visir_line, sizeof(SUB_VISIRLINE), 1, fin));
+        if( VSIFReadL(&gp_header, sizeof(GP_PK_HEADER), 1, fin) != 1 ||
+            VSIFReadL(&sub_header, sizeof(GP_PK_SH1), 1, fin) != 1 ||
+            VSIFReadL(&visir_line, sizeof(SUB_VISIRLINE), 1, fin) != 1 )
+        {
+            _open_success = false;
+            break;
+        }
         to_native(visir_line);
         to_native(gp_header);
 
@@ -354,7 +358,7 @@ int Msg_reader_core::_chan_to_idx(Msg_channel_names channel) {
     return 0;
 }
 
-void Msg_reader_core::get_pixel_geo_coordinates(unsigned int line, unsigned int column, double& longitude, double& latitude) {
+void Msg_reader_core::get_pixel_geo_coordinates(unsigned int line, unsigned int column, double& longitude, double& latitude) const {
     Conversions::convert_pixel_to_geo((unsigned int)(line + _line_start), (unsigned int)(column + _col_start), longitude, latitude);
 }
 

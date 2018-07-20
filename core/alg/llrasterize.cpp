@@ -39,11 +39,11 @@
 
 #include "gdal_alg.h"
 
-CPL_CVSID("$Id$");
+CPL_CVSID("$Id$")
 
 static int llCompareInt(const void *a, const void *b)
 {
-    return (*(const int *)a) - (*(const int *)b);
+    return *static_cast<const int*>(a) - *static_cast<const int*>(b);
 }
 
 /************************************************************************/
@@ -209,7 +209,7 @@ No known bug
                     // Fill the horizontal segment (separately from the rest).
                     pfnScanlineFunc( pCBData, y, horizontal_x1,
                                      horizontal_x2 - 1,
-                                     (dfVariant == NULL)?0:dfVariant[0] );
+                                     (dfVariant == nullptr)?0:dfVariant[0] );
                 }
                 // else: Skip top horizontal segments.
                 // They are already filled in the regular loop.
@@ -238,7 +238,7 @@ No known bug
             if( polyInts[i] <= maxx && polyInts[i+1] > minx )
             {
                 pfnScanlineFunc(pCBData, y, polyInts[i], polyInts[i+1] - 1,
-                                dfVariant == NULL ? 0 : dfVariant[0]);
+                                dfVariant == nullptr ? 0 : dfVariant[0]);
             }
         }
     }
@@ -261,7 +261,7 @@ void GDALdllImagePoint( int nRasterXSize, int nRasterYSize,
         const int nX = static_cast<int>(floor( padfX[i] ));
         const int nY = static_cast<int>(floor( padfY[i] ));
         double dfVariant = 0.0;
-        if( padfVariant != NULL )
+        if( padfVariant != nullptr )
             dfVariant = padfVariant[i];
 
         if( 0 <= nX && nX < nRasterXSize && 0 <= nY && nY < nRasterYSize )
@@ -293,8 +293,8 @@ void GDALdllImageLine( int nRasterXSize, int nRasterYSize,
 
             double dfVariant = 0.0;
             double dfVariant1 = 0.0;
-            if( padfVariant != NULL &&
-                ((GDALRasterizeInfo *)pCBData)->eBurnValueSource !=
+            if( padfVariant != nullptr &&
+                static_cast<GDALRasterizeInfo *>(pCBData)->eBurnValueSource !=
                     GBV_UserBurnValue )
             {
                 dfVariant = padfVariant[n + j - 1];
@@ -412,8 +412,8 @@ GDALdllImageLineAllTouched( int nRasterXSize, int nRasterYSize,
 
             double dfVariant = 0.0;
             double dfVariantEnd = 0.0;
-            if( padfVariant != NULL &&
-                ((GDALRasterizeInfo *)pCBData)->eBurnValueSource !=
+            if( padfVariant != nullptr &&
+                static_cast<GDALRasterizeInfo *>(pCBData)->eBurnValueSource !=
                     GBV_UserBurnValue )
             {
                 dfVariant = padfVariant[n + j - 1];
@@ -446,9 +446,9 @@ GDALdllImageLineAllTouched( int nRasterXSize, int nRasterYSize,
 
                 const int iX = static_cast<int>(floor(dfXEnd));
                 int iY = static_cast<int>(floor(dfY));
-                int iYEnd = (int) floor(dfYEnd);
+                int iYEnd = static_cast<int>(floor(dfYEnd));
 
-                if( iX >= nRasterXSize )
+                if( iX < 0 || iX >= nRasterXSize )
                     continue;
 
                 double dfDeltaVariant = 0.0;
@@ -464,7 +464,7 @@ GDALdllImageLineAllTouched( int nRasterXSize, int nRasterYSize,
                     iYEnd = nRasterYSize - 1;
                 dfVariant += dfDeltaVariant * (iY - dfY);
 
-                if( padfVariant == NULL )
+                if( padfVariant == nullptr )
                     for( ; iY <= iYEnd; iY++ )
                         pfnPointFunc( pCBData, iY, iX, 0.0 );
                 else
@@ -489,9 +489,9 @@ GDALdllImageLineAllTouched( int nRasterXSize, int nRasterYSize,
 
                 int iX = static_cast<int>(floor(dfX));
                 const int iY = static_cast<int>(floor(dfY));
-                int iXEnd = (int) floor(dfXEnd);
+                int iXEnd = static_cast<int>(floor(dfXEnd));
 
-                if( iY >= nRasterYSize )
+                if( iY < 0 || iY >= nRasterYSize )
                     continue;
 
                 // Clip to the borders of the target region.
@@ -501,7 +501,7 @@ GDALdllImageLineAllTouched( int nRasterXSize, int nRasterYSize,
                     iXEnd = nRasterXSize - 1;
                 dfVariant += dfDeltaVariant * (iX - dfX);
 
-                if( padfVariant == NULL )
+                if( padfVariant == nullptr )
                     for( ; iX <= iXEnd; iX++ )
                         pfnPointFunc( pCBData, iY, iX, 0.0 );
                 else

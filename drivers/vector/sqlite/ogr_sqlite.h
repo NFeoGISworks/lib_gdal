@@ -31,12 +31,18 @@
 #ifndef OGR_SQLITE_H_INCLUDED
 #define OGR_SQLITE_H_INCLUDED
 
-#include "ogrsf_frmts.h"
-#include "gdal_pam.h"
-#include "cpl_error.h"
+#include <cstddef>
 #include <map>
 #include <set>
+#include <utility>
 #include <vector>
+
+#include "cpl_error.h"
+#include "gdal_pam.h"
+#include "ogrsf_frmts.h"
+#include "ogrsf_frmts.h"
+#include "rasterlite2_header.h"
+#include "sqlite3.h"
 
 #ifdef HAVE_SPATIALITE
   #ifdef SPATIALITE_AMALGAMATION
@@ -60,8 +66,6 @@
 #else
 #include "sqlite3.h"
 #endif
-
-#include "rasterlite2_header.h"
 
 #ifndef DO_NOT_INCLUDE_SQLITE_CLASSES
 
@@ -159,7 +163,7 @@ enum OGRSpatialiteGeomType
 /*                        OGRSQLiteGeomFieldDefn                        */
 /************************************************************************/
 
-class OGRSQLiteGeomFieldDefn CPL_FINAL : public OGRGeomFieldDefn
+class OGRSQLiteGeomFieldDefn final : public OGRGeomFieldDefn
 {
     public:
         OGRSQLiteGeomFieldDefn( const char* pszNameIn, int iGeomColIn ) :
@@ -185,10 +189,10 @@ class OGRSQLiteGeomFieldDefn CPL_FINAL : public OGRGeomFieldDefn
 /*                        OGRSQLiteFeatureDefn                          */
 /************************************************************************/
 
-class OGRSQLiteFeatureDefn CPL_FINAL : public OGRFeatureDefn
+class OGRSQLiteFeatureDefn final : public OGRFeatureDefn
 {
     public:
-        explicit OGRSQLiteFeatureDefn( const char * pszName = NULL ) :
+        explicit OGRSQLiteFeatureDefn( const char * pszName = nullptr ) :
             OGRFeatureDefn(pszName)
         {
             SetGeomType(wkbNone);
@@ -290,7 +294,7 @@ class OGRSQLiteLayer : public OGRLayer, public IOGRSQLiteGetSpatialWhere
                         OGRSQLiteLayer();
     virtual             ~OGRSQLiteLayer();
 
-    virtual void        Finalize();
+    void                Finalize();
 
     virtual void        ResetReading() override;
     virtual OGRFeature *GetNextRawFeature();
@@ -661,7 +665,7 @@ class OGRSQLiteSelectLayer : public OGRSQLiteLayer, public IOGRSQLiteSelectLayer
 /*                   OGRSQLiteSingleFeatureLayer                        */
 /************************************************************************/
 
-class OGRSQLiteSingleFeatureLayer CPL_FINAL : public OGRLayer
+class OGRSQLiteSingleFeatureLayer final : public OGRLayer
 {
   private:
     int                 nVal;
@@ -691,6 +695,7 @@ class OGRSQLiteBaseDataSource : public GDALPamDataset
 {
   protected:
     char               *m_pszFilename;
+    bool                m_bCallUndeclareFileNotToOpen = false;
 
     sqlite3             *hDB;
     int                 bUpdate;
@@ -756,7 +761,7 @@ class OGRSQLiteBaseDataSource : public GDALPamDataset
 /*                         OGRSQLiteDataSource                          */
 /************************************************************************/
 
-class OGRSQLiteDataSource CPL_FINAL : public OGRSQLiteBaseDataSource
+class OGRSQLiteDataSource final : public OGRSQLiteBaseDataSource
 {
     OGRSQLiteLayer    **papoLayers;
     int                 nLayers;
@@ -904,7 +909,7 @@ class OGRSQLiteDataSource CPL_FINAL : public OGRSQLiteBaseDataSource
 /*                           RL2RasterBand                              */
 /************************************************************************/
 
-class RL2RasterBand CPL_FINAL: public GDALPamRasterBand
+class RL2RasterBand final: public GDALPamRasterBand
 {
     bool            m_bHasNoData;
     double          m_dfNoDataValue;
@@ -922,7 +927,7 @@ class RL2RasterBand CPL_FINAL: public GDALPamRasterBand
                                            int nBlockYSizeIn,
                                            bool bHasNoDataIn,
                                            double dfNoDataValueIn );
-                            RL2RasterBand( const RL2RasterBand* poOther );
+        explicit            RL2RasterBand( const RL2RasterBand* poOther );
 
         virtual            ~RL2RasterBand();
 
@@ -931,7 +936,7 @@ class RL2RasterBand CPL_FINAL: public GDALPamRasterBand
         virtual CPLErr      IReadBlock( int, int, void* ) override;
         virtual GDALColorInterp GetColorInterpretation() override
                                                     { return m_eColorInterp; }
-        virtual double      GetNoDataValue( int* pbSuccess = NULL ) override;
+        virtual double      GetNoDataValue( int* pbSuccess = nullptr ) override;
         virtual GDALColorTable* GetColorTable() override;
         virtual int         GetOverviewCount() override;
         virtual GDALRasterBand* GetOverview(int) override;

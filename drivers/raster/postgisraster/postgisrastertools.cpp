@@ -34,7 +34,7 @@
  **********************************************************************/
  #include "postgisraster.h"
 
-CPL_CVSID("$Id$");
+CPL_CVSID("$Id$")
 
  /**********************************************************************
  * \brief Replace the quotes by single quotes in the input string
@@ -43,12 +43,12 @@ CPL_CVSID("$Id$");
  **********************************************************************/
 char * ReplaceQuotes(const char * pszInput, int nLength) {
     int i;
-    char * pszOutput = NULL;
+    char * pszOutput = nullptr;
 
     if (nLength == -1)
         nLength = static_cast<int>(strlen(pszInput));
 
-    pszOutput = (char*) CPLCalloc(nLength + 1, sizeof (char));
+    pszOutput = static_cast<char*>(CPLCalloc(nLength + 1, sizeof (char)));
 
     for (i = 0; i < nLength; i++) {
         if (pszInput[i] == '"')
@@ -67,12 +67,12 @@ char * ReplaceQuotes(const char * pszInput, int nLength) {
  *************************************************************/
 char * ReplaceSingleQuotes(const char * pszInput, int nLength) {
     int i;
-    char* pszOutput = NULL;
+    char* pszOutput = nullptr;
 
     if (nLength == -1)
         nLength = static_cast<int>(strlen(pszInput));
 
-    pszOutput = (char*) CPLCalloc(nLength + 1, sizeof (char));
+    pszOutput = static_cast<char*>(CPLCalloc(nLength + 1, sizeof (char)));
 
     for (i = 0; i < nLength; i++)
     {
@@ -94,15 +94,13 @@ char * ReplaceSingleQuotes(const char * pszInput, int nLength) {
  * The returned list must be freed with CSLDestroy when no longer needed
  **********************************************************************/
 char** ParseConnectionString(const char * pszConnectionString) {
-    char * pszEscapedConnectionString = NULL;
 
     /* Escape string following SQL scheme */
-    pszEscapedConnectionString =
+    char* pszEscapedConnectionString =
         ReplaceSingleQuotes(pszConnectionString, -1);
 
     /* Avoid PG: part */
-    char* pszStartPos = (char*)
-        strstr(pszEscapedConnectionString, ":") + 1;
+    char* pszStartPos = strstr(pszEscapedConnectionString, ":") + 1;
 
     /* Tokenize */
     char** papszParams =
@@ -119,8 +117,8 @@ char** ParseConnectionString(const char * pszConnectionString) {
  * GDALDataType object.
  **********************************************************************/
 GBool TranslateDataType(const char * pszDataType,
-        GDALDataType * poDataType = NULL, int * pnBitsDepth = NULL,
-        GBool * pbSignedByte = NULL)
+        GDALDataType * poDataType = nullptr, int * pnBitsDepth = nullptr,
+        GBool * pbSignedByte = nullptr)
 {
     if (!pszDataType)
         return false;

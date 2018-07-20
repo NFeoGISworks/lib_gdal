@@ -38,13 +38,15 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 # TODO: remove this when change according include path in gdaldataset.cpp
 include_directories(${CMAKE_SOURCE_DIR}/drivers/vector/sqlite)
 
+configure_file(gdal_version.h.in ${CMAKE_CURRENT_BINARY_DIR}/gdal_version.h COPYONLY)
+
 set(LIB_HHEADERS
     gdalexif.h
     gdal.h
     gdal_mdreader.h
     gdal_proxy.h
     gdal_rat.h
-    gdal_version.h
+    ${CMAKE_CURRENT_BINARY_DIR}/gdal_version.h
     gdal_frmts.h
     gdal_priv.h
     gdaljp2metadata.h
@@ -116,12 +118,13 @@ if(GDAL_PAM_ENABLED)
     )
 endif(GDAL_PAM_ENABLED)
 
+if(WIN32)
+    set(LIB_CSOURCES ${LIB_CSOURCES} Version.rc)
+endif()
+
 add_subdirectory(mdreader)
 
 add_library(${TARGET_NAME} OBJECT ${LIB_HHEADERS} ${LIB_HHEADERS_PRIV} ${LIB_CSOURCES})
-if(DEPENDENCY_LIB)
-    add_dependencies(${TARGET_NAME} ${DEPENDENCY_LIB})
-endif()
 
 # Build target
 set(TARGET_OBJECTS ${TARGET_OBJECTS} $<TARGET_OBJECTS:${TARGET_NAME}> PARENT_SCOPE)

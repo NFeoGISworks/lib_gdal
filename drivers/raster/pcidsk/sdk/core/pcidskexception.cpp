@@ -31,12 +31,13 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstdio>
+#include <cstdarg>
+
+#if !defined(va_copy) && defined(__va_copy)
+#define va_copy __va_copy
+#endif
 
 using PCIDSK::PCIDSKException;
-
-#if defined(_MSC_VER) && (_MSC_VER < 1500)
-#  define vsnprintf _vsnprintf
-#endif
 
 /**
 
@@ -186,7 +187,7 @@ void PCIDSKException::vPrintf( const char *fmt, std::va_list args )
 #else
             wrk_args = args;
 #endif
-            if( pszWorkBufferNew == NULL )
+            if( pszWorkBufferNew == nullptr )
             {
                 strcpy( pszWorkBuffer, "(message too large)" );
                 break;

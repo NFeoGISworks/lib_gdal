@@ -25,6 +25,42 @@
 # DEALINGS IN THE SOFTWARE.
 ################################################################################
 
+find_anyproject(TIFF REQUIRED CMAKE_ARGS
+    -DSKIP_BUILD_DOCS=ON
+    -DSKIP_TOOLS=ON
+)
+if(WITH_TIFF_EXTERNAL OR BIGTIFF_SUPPORTED)
+    #TODO: check cases then HAVE_BIGTIFF False
+    set(HAVE_BIGTIFF TRUE)
+    # add_definitions(-DTIFFLIB_VERSION_STR=${TIFF_VERSION})
+else()
+    set(CMAKE_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES} ${TIFF_INCLUDE_DIR})
+    set(CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} ${TIFF_LIBRARIES})
+    check_function_exists(TIFFScanlineSize64 HAVE_BIGTIFF)
+endif()
+
+if(HAVE_BIGTIFF)
+    add_definitions(-DBIGTIFF_SUPPORT)
+else()
+    warning_msg("BigTIFF is not supported")
+endif()
+
+find_anyproject(GeoTIFF VERSION 1.2.1 REQUIRED CMAKE_ARGS
+    -DBUILD_TESTING=OFF
+    -DWITH_UTILITIES=OFF
+)
+find_anyproject(JPEG DEFAULT ON)
+if(JPEG_FOUND)
+    add_definitions(-DJPEG_SUPPORTED)
+    add_definitions(-DHAVE_LIBJPEG) # Added only after 2.1 release (especially for geotiff.cpp where incorrect #ifdef is used)
+endif()
+
+find_anyproject(JPEG12 DEFAULT ON)
+if(JPEG12_FOUND)
+    add_definitions(-DJPEG12_SUPPORTED)
+endif()
+find_anyproject(PNG DEFAULT ON)
+
 file(GLOB FORMATS ${CMAKE_CURRENT_SOURCE_DIR}/*)
 foreach(FORMAT ${FORMATS})
     if(EXISTS ${FORMAT}/CMakeLists.txt)

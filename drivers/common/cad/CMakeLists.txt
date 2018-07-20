@@ -5,7 +5,7 @@
 ################################################################################
 # Copyright (C) 2015-2017, NextGIS <info@nextgis.com>
 # Copyright (C) 2016 Dmitry Baryshnikov
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
 # to deal in the Software without restriction, including without limitation
@@ -26,20 +26,16 @@
 ################################################################################
 
 option(ENABLE_CAD "Build CAD (.dwg) format" ON)
-include(CheckCXXCompilerFlag)
-CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-
-if(ENABLE_CAD AND COMPILER_SUPPORTS_CXX11)
+if(ENABLE_CAD)
     set(TARGET_NAME com_cad)
 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
     add_definitions(-DCAD_ENABLED)
     set(FORMAT_DEFINITIONS ${FORMAT_DEFINITIONS} "-DCAD_ENABLED" PARENT_SCOPE)
 
     include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-   
+
     find_anyproject(OpenCAD REQUIRED)
-    
+
     set(LIB_HHEADERS
         ogr_cad.h
         vsilfileio.h
@@ -48,23 +44,16 @@ if(ENABLE_CAD AND COMPILER_SUPPORTS_CXX11)
     set(LIB_CSOURCES
         gdalcaddataset.cpp
         ogrcaddriver.cpp
-        ogrcadlayer.cpp   
+        ogrcadlayer.cpp
         vsilfileio.cpp
     )
 
     add_library(${TARGET_NAME} OBJECT ${LIB_HHEADERS} ${LIB_CSOURCES})
-    if(WITH_OpenCAD_EXTERNAL)
-        add_dependencies(${TARGET_NAME} OpenCAD_EP)
-    endif()
-    
+
     # build target
     set(TARGET_OBJECTS ${TARGET_OBJECTS} $<TARGET_OBJECTS:${TARGET_NAME}> PARENT_SCOPE)
     set(TARGET_LINK_LIB ${TARGET_LINK_LIB} PARENT_SCOPE)
     set(DEPENDENCY_LIB ${DEPENDENCY_LIB} PARENT_SCOPE)
 else()
-    if(COMPILER_SUPPORTS_CXX11)
-        warning_msg("Skip cad")
-    else()
-        warning_msg("Skip cad. Compile C++11 feature not supported")
-    endif()      
+    warning_msg("Skip cad")
 endif()

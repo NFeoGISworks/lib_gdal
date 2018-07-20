@@ -34,7 +34,6 @@ if(ENABLE_PLSCENES)
 	set(FORMAT_DEFINITIONS ${FORMAT_DEFINITIONS} "-DPLSCENES_ENABLED" PARENT_SCOPE)
 
     include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-    #include_directories(${JSONC_INCLUDE_DIRS})
     include_directories(${CMAKE_SOURCE_DIR}/drivers/vector/geojson)
 
     set(LIB_HHEADERS
@@ -53,9 +52,6 @@ if(ENABLE_PLSCENES)
     )
 
     add_library(${TARGET_NAME} OBJECT ${LIB_HHEADERS} ${LIB_HHEADERS_PRIV} ${LIB_CSOURCES})
-    if(DEPENDENCY_LIB)
-        add_dependencies(${TARGET_NAME} ${DEPENDENCY_LIB})
-    endif()
 
     # build target
     set(TARGET_OBJECTS ${TARGET_OBJECTS} $<TARGET_OBJECTS:${TARGET_NAME}> PARENT_SCOPE)

@@ -35,7 +35,7 @@
 #include "cpl_conv.h"
 #include "cpl_string.h"
 
-CPL_CVSID("$Id$");
+CPL_CVSID("$Id$")
 
 static const char * const papszParameterDefinitions[] = {
     SRS_PP_CENTRAL_MERIDIAN,    "Central Meridian",     "Long",  "0.0",
@@ -61,7 +61,12 @@ static const char * const papszParameterDefinitions[] = {
     SRS_PP_PEG_POINT_LONGITUDE, "Peg Point Longitude",  "Long",  "0.0",
     SRS_PP_PEG_POINT_HEADING,   "Peg Point Heading",    "Angle", "0.0",
     SRS_PP_PEG_POINT_HEIGHT,    "Peg Point Height",     "m",     "0.0",
-    NULL
+    SRS_PP_PSEUDO_STD_PARALLEL_1, "Pseudo standard parallel 1", "Lat", "0.0",
+    SRS_PP_LATITUDE_OF_1ST_POINT, "Latitude of 1st point", "Lat", "0.0",
+    SRS_PP_LATITUDE_OF_2ND_POINT, "Latitude of 2nd point", "Lat", "0.0",
+    SRS_PP_LONGITUDE_OF_1ST_POINT, "Longitude of 1st point", "Lat", "0.0",
+    SRS_PP_LONGITUDE_OF_2ND_POINT, "Longitude of 2nd point", "Long", "0.0",
+    nullptr
 };
 
 static const char * const papszProjectionDefinitions[] = {
@@ -386,7 +391,7 @@ static const char * const papszProjectionDefinitions[] = {
     SRS_PP_FALSE_EASTING,
     SRS_PP_FALSE_NORTHING,
 
-    "*"
+    "*",
     SRS_PT_STEREOGRAPHIC,
     "Stereographic",
     SRS_PP_LATITUDE_OF_ORIGIN,
@@ -395,7 +400,7 @@ static const char * const papszProjectionDefinitions[] = {
     SRS_PP_FALSE_EASTING,
     SRS_PP_FALSE_NORTHING,
 
-    "*"
+    "*",
     SRS_PT_TWO_POINT_EQUIDISTANT,
     "Two Point Equidistant",
     SRS_PP_LATITUDE_OF_1ST_POINT,
@@ -412,7 +417,7 @@ static const char * const papszProjectionDefinitions[] = {
     SRS_PP_FALSE_EASTING,
     SRS_PP_FALSE_NORTHING,
 
-    "*"
+    "*",
     SRS_PT_KROVAK,
     "Krovak",
     SRS_PP_LATITUDE_OF_CENTER,
@@ -489,7 +494,7 @@ static const char * const papszProjectionDefinitions[] = {
     SRS_PP_PEG_POINT_HEADING,
     SRS_PP_PEG_POINT_HEIGHT,
 
-    NULL
+    nullptr
 };
 
 /************************************************************************/
@@ -506,9 +511,9 @@ static const char * const papszProjectionDefinitions[] = {
 char **OPTGetProjectionMethods()
 
 {
-    char **papszList = NULL;
+    char **papszList = nullptr;
 
-    for( int i = 1; papszProjectionDefinitions[i] != NULL; ++i )
+    for( int i = 1; papszProjectionDefinitions[i] != nullptr; ++i )
     {
         if( EQUAL(papszProjectionDefinitions[i-1], "*") )
             papszList = CSLAddString(papszList, papszProjectionDefinitions[i]);
@@ -541,20 +546,20 @@ char **OPTGetParameterList( const char *pszProjectionMethod,
                             char ** ppszUserName )
 
 {
-    char **papszList = NULL;
+    char **papszList = nullptr;
 
-    for( int i = 1; papszProjectionDefinitions[i] != NULL; ++i )
+    for( int i = 1; papszProjectionDefinitions[i] != nullptr; ++i )
     {
         if( papszProjectionDefinitions[i-1][0] == '*'
             && EQUAL(papszProjectionDefinitions[i], pszProjectionMethod) )
         {
             ++i;
 
-            if( ppszUserName != NULL )
-                *ppszUserName = (char *)papszProjectionDefinitions[i];
+            if( ppszUserName != nullptr )
+                *ppszUserName = const_cast<char *>(papszProjectionDefinitions[i]);
 
             ++i;
-            while( papszProjectionDefinitions[i] != NULL
+            while( papszProjectionDefinitions[i] != nullptr
                    && papszProjectionDefinitions[i][0] != '*' )
             {
                 papszList = CSLAddString( papszList,
@@ -562,13 +567,13 @@ char **OPTGetParameterList( const char *pszProjectionMethod,
                 ++i;
             }
             // IGH has no parameter, so return an empty list instead of NULL.
-            if( papszList == NULL)
+            if( papszList == nullptr)
                 papszList = static_cast<char**>( CPLCalloc(1, sizeof(char*)) );
             return papszList;
         }
     }
 
-    return NULL;
+    return nullptr;
 }
 
 /************************************************************************/
@@ -607,16 +612,16 @@ int OPTGetParameterInfo( CPL_UNUSED const char * pszProjectionMethod,
                          double *pdfDefaultValue )
 
 {
-    for( int i = 0; papszParameterDefinitions[i] != NULL; i += 4 )
+    for( int i = 0; papszParameterDefinitions[i] != nullptr; i += 4 )
     {
         if( EQUAL(papszParameterDefinitions[i], pszParameterName) )
         {
-            if( ppszUserName != NULL )
+            if( ppszUserName != nullptr )
                 *ppszUserName =
                     const_cast<char *>(papszParameterDefinitions[i+1]);
-            if( ppszType != NULL )
+            if( ppszType != nullptr )
                 *ppszType = const_cast<char *>(papszParameterDefinitions[i+2]);
-            if( pdfDefaultValue != NULL )
+            if( pdfDefaultValue != nullptr )
                 *pdfDefaultValue = CPLAtof(papszParameterDefinitions[i+3]);
 
             return TRUE;

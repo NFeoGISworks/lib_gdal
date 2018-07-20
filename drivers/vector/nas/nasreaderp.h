@@ -65,6 +65,7 @@ class NASHandler : public DefaultHandler
     int        m_nGeomLen;
 
     int        m_nGeometryDepth;
+    int        m_nGeometryPropertyIndex;
     bool       IsGeometryElement( const char * );
 
     int        m_nDepth;
@@ -72,8 +73,9 @@ class NASHandler : public DefaultHandler
     bool       m_bIgnoreFeature;
     bool       m_bInUpdate;
     bool       m_bInUpdateProperty;
-    int        m_nDepthElement;
-    CPLString  m_osIgnoredElement;
+    int        m_nUpdateOrDeleteDepth;
+    int        m_nUpdatePropertyDepth;
+    int        m_nNameOrValueDepth;
 
     CPLString  m_osLastTypeName;
     CPLString  m_osLastReplacingFID;
@@ -199,8 +201,8 @@ public:
 
     GMLFeature       *NextFeature() override;
 
-    bool             LoadClasses( const char *pszFile = NULL ) override;
-    bool             SaveClasses( const char *pszFile = NULL ) override;
+    bool             LoadClasses( const char *pszFile = nullptr ) override;
+    bool             SaveClasses( const char *pszFile = nullptr ) override;
 
     bool             PrescanForSchema(bool bGetExtents = true,
                                       bool bAnalyzeSRSPerFeature = true,
@@ -212,7 +214,7 @@ public:
 
     bool             ResolveXlinks( const char *pszFile,
                                     bool* pbOutIsTempFile,
-                                    char **papszSkip = NULL,
+                                    char **papszSkip = nullptr,
                                     const bool bStrict = false ) override;
 
     bool             HugeFileResolver( const char *pszFile,
@@ -241,7 +243,7 @@ public:
                                    const Attributes &attrs,
                                    char **ppszCurField );
 
-    virtual const char* GetGlobalSRSName() override { return NULL; }
+    virtual const char* GetGlobalSRSName() override { return nullptr; }
 
     virtual bool        CanUseGlobalSRSName() override { return false; }
 

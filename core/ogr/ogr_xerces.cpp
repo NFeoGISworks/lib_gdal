@@ -40,11 +40,11 @@
 #include "cpl_multiproc.h"
 #include "cpl_string.h"
 
-CPL_CVSID("$Id$");
+CPL_CVSID("$Id$")
 
 #ifdef HAVE_XERCES
 
-static CPLMutex* hMutex = NULL;
+static CPLMutex* hMutex = nullptr;
 static int nCounter = 0;
 
 /************************************************************************/
@@ -106,9 +106,9 @@ void OGRDeinitializeXerces(void)
 
 void OGRCleanupXercesMutex(void)
 {
-    if( hMutex != NULL )
+    if( hMutex != nullptr )
         CPLDestroyMutex(hMutex);
-    hMutex = NULL;
+    hMutex = nullptr;
 }
 
 namespace OGR
@@ -128,7 +128,7 @@ CPLString transcode( const XMLCh *panXMLString, int nLimitingChars )
 CPLString& transcode( const XMLCh *panXMLString, CPLString& osRet,
                       int nLimitingChars )
 {
-    if( panXMLString == NULL )
+    if( panXMLString == nullptr )
     {
         osRet = "(null)";
         return osRet;
@@ -193,10 +193,9 @@ class OGRXercesBinInputStream : public BinInputStream
     bool bFirstCallToReadBytes;
 #endif
 
-public :
-
-    explicit OGRXercesBinInputStream(VSILFILE* fp);
-    virtual ~OGRXercesBinInputStream();
+  public:
+    explicit OGRXercesBinInputStream( VSILFILE* fp );
+    ~OGRXercesBinInputStream() override;
 
     virtual XMLFilePos curPos() const override;
     virtual XMLSize_t readBytes(XMLByte* const toFill,
@@ -213,11 +212,11 @@ class OGRXercesInputSource : public InputSource
 {
     OGRXercesBinInputStream* pBinInputStream;
 
-public:
-             OGRXercesInputSource(VSILFILE* fp,
-                            MemoryManager* const manager =
-                                XMLPlatformUtils::fgMemoryManager);
-    virtual ~OGRXercesInputSource();
+  public:
+    OGRXercesInputSource(VSILFILE* fp,
+                         MemoryManager* const manager =
+                         XMLPlatformUtils::fgMemoryManager);
+    ~OGRXercesInputSource() override;
 
     virtual BinInputStream* makeStream() const override
         { return pBinInputStream; }
@@ -247,7 +246,7 @@ OGRXercesBinInputStream::~OGRXercesBinInputStream() {}
 
 XMLFilePos OGRXercesBinInputStream::curPos() const
 {
-    return (XMLFilePos)VSIFTellL(fp);
+    return static_cast<XMLFilePos>(VSIFTellL(fp));
 }
 
 /************************************************************************/
@@ -257,12 +256,12 @@ XMLFilePos OGRXercesBinInputStream::curPos() const
 XMLSize_t OGRXercesBinInputStream::readBytes(XMLByte* const toFill,
                                              const XMLSize_t maxToRead)
 {
-    XMLSize_t nRead = (XMLSize_t)VSIFReadL(toFill, 1, maxToRead, fp);
+    XMLSize_t nRead = static_cast<XMLSize_t>(VSIFReadL(toFill, 1, maxToRead, fp));
 #ifdef WORKAROUND_XERCESC_2094
     if( bFirstCallToReadBytes && nRead > 10 )
     {
         // Workaround leak in Xerces-C when parsing an invalid encoding
-        // attribute and there are newline characters between <?xml and
+        // attribute and there are newline or tab characters between <?xml and
         // version="1.0". So replace those newlines by equivalent spaces....
         // See https://issues.apache.org/jira/browse/XERCESC-2094
         XMLSize_t nToSkip = 0;
@@ -274,7 +273,7 @@ XMLSize_t OGRXercesBinInputStream::readBytes(XMLByte* const toFill,
         {
             for( XMLSize_t i = nToSkip; i < nRead; i++ )
             {
-                if( toFill[i] == 0xD || toFill[i] == 0xA )
+                if( toFill[i] == 0xD || toFill[i] == 0xA || toFill[i] == 0x9 )
                     toFill[i] = ' ';
                 else
                     break;

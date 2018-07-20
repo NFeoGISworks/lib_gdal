@@ -4,12 +4,10 @@
  * Project:  Common Portability Library
  * Purpose:  Function wrapper for libcurl HTTP access.
  * Author:   Frank Warmerdam, warmerdam@pobox.com
- * Author:   Dmitry Baryshnikov, dmitry.baryshnikov@nextgis.com
  *
  ******************************************************************************
  * Copyright (c) 2006, Frank Warmerdam
  * Copyright (c) 2009, Even Rouault <even dot rouault at mines-paris dot org>
- * Copyright (c) 2017 NextGIS, <info@nextgis.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -35,6 +33,7 @@
 
 #include "cpl_conv.h"
 #include "cpl_string.h"
+#include "cpl_progress.h"
 #include "cpl_vsi.h"
 
 #include <vector>
@@ -44,6 +43,11 @@
  *
  * Interface for downloading HTTP, FTP documents
  */
+
+/*! @cond Doxygen_Suppress */
+#define CPL_HTTP_MAX_RETRY      0
+#define CPL_HTTP_RETRY_DELAY    30.0
+/*! @endcond */
 
 CPL_C_START
 
@@ -83,15 +87,27 @@ typedef struct {
     /*! Array of parts (resolved by CPLHTTPParseMultipartMime()) */
     CPLMimePart *pasMimePart;
 
-    /*! HTTP response code */
-    long nHTTPResponseCode;
-
 } CPLHTTPResult;
 
+/*! @cond Doxygen_Suppress */
+typedef size_t (*CPLHTTPFetchWriteFunc)(void *pBuffer, size_t nSize, size_t nMemb, void *pWriteArg);
+/*! @endcond */
+
 int CPL_DLL   CPLHTTPEnabled( void );
-CPLHTTPResult CPL_DLL *CPLHTTPFetch( const char *pszURL, char **papszOptions);
+CPLHTTPResult CPL_DLL *CPLHTTPFetch( const char *pszURL, CSLConstList papszOptions);
+CPLHTTPResult CPL_DLL *CPLHTTPFetchEx( const char *pszURL,CSLConstList papszOptions,
+                                       GDALProgressFunc pfnProgress,
+                                       void *pProgressArg,
+                                       CPLHTTPFetchWriteFunc pfnWrite,
+                                       void *pWriteArg);
+CPLHTTPResult CPL_DLL **CPLHTTPMultiFetch( const char * const * papszURL,
+                                           int nURLCount,
+                                           int nMaxSimultaneous,
+                                           CSLConstList papszOptions);
+
 void CPL_DLL  CPLHTTPCleanup( void );
 void CPL_DLL  CPLHTTPDestroyResult( CPLHTTPResult *psResult );
+void CPL_DLL  CPLHTTPDestroyMultiResult( CPLHTTPResult **papsResults, int nCount );
 int  CPL_DLL  CPLHTTPParseMultipartMime( CPLHTTPResult *psResult );
 
 /* -------------------------------------------------------------------- */
@@ -107,6 +123,16 @@ char CPL_DLL *GOA2GetRefreshToken( const char *pszAuthToken,
                                    const char *pszScope );
 char CPL_DLL *GOA2GetAccessToken( const char *pszRefreshToken,
                                   const char *pszScope );
+
+char  CPL_DLL **GOA2GetAccessTokenFromServiceAccount(
+                                        const char* pszPrivateKey,
+                                        const char* pszClientEmail,
+                                        const char* pszScope,
+                                        CSLConstList papszAdditionalClaims,
+                                        CSLConstList papszOptions);
+
+char CPL_DLL **GOA2GetAccessTokenFromCloudEngineVM( CSLConstList papszOptions );
+
 /* HTTP Auth event triggers */
 typedef enum  {
     HTTPAUTH_UPDATE = 1, /*< Auth properties updated */
@@ -128,11 +154,83 @@ const char *CPL_DLL CPLHTTPAuthHeader(const char *pszUrl);
 
 CPL_C_END
 
-#ifdef __cplusplus
+#if defined(__cplusplus) && !defined(CPL_SUPRESS_CPLUSPLUS)
 /*! @cond Doxygen_Suppress */
 // Not sure if this belong here, used in cpl_http.cpp, cpl_vsil_curl.cpp and frmts/wms/gdalhttp.cpp
-void *CPLHTTPSetOptions(void *pcurl, const char * const *papszOptions);
-char **CPLHTTPGetOptionsFromEnv();
+void* CPLHTTPSetOptions(void *pcurl, const char * const* papszOptions);
+char** CPLHTTPGetOptionsFromEnv();
+double CPLHTTPGetNewRetryDelay(int response_code, double dfOldDelay);
+void* CPLHTTPIgnoreSigPipe();
+void CPLHTTPRestoreSigPipeHandler(void* old_handler);
+bool CPLMultiPerformWait(void* hCurlMultiHandle, int& repeats);
+/*! @endcond */
+
+bool CPLIsMachinePotentiallyGCEInstance();
+bool CPLIsMachineForSureGCEInstance();
+
+/** Manager of Google OAuth2 authentication.
+ *
+ * This class handles different authentication methods and handles renewal
+ * of access token.
+ *
+ * @since GDAL 2.3
+ */
+class GOA2Manager
+{
+    public:
+
+        GOA2Manager();
+
+        /** Authentication method */
+        typedef enum
+        {
+            NONE,
+            GCE,
+            ACCESS_TOKEN_FROM_REFRESH,
+            SERVICE_ACCOUNT
+        } AuthMethod;
+
+        bool SetAuthFromGCE( CSLConstList papszOptions );
+        bool SetAuthFromRefreshToken( const char* pszRefreshToken,
+                                      const char* pszClientId,
+                                      const char* pszClientSecret,
+                                      CSLConstList papszOptions );
+        bool SetAuthFromServiceAccount(const char* pszPrivateKey,
+                                       const char* pszClientEmail,
+                                       const char* pszScope,
+                                       CSLConstList papszAdditionalClaims,
+                                       CSLConstList papszOptions );
+
+        /** Returns the authentication method. */
+        AuthMethod GetAuthMethod() const { return m_eMethod; }
+
+        const char* GetBearer() const;
+
+        /** Returns private key for SERVICE_ACCOUNT method */
+        const CPLString& GetPrivateKey() const { return m_osPrivateKey; }
+
+        /** Returns client email for SERVICE_ACCOUNT method */
+        const CPLString& GetClientEmail() const { return m_osClientEmail; }
+
+    private:
+
+        mutable CPLString       m_osCurrentBearer;
+        mutable time_t          m_nExpirationTime;
+        AuthMethod      m_eMethod;
+
+        // for ACCESS_TOKEN_FROM_REFRESH
+        CPLString       m_osClientId;
+        CPLString       m_osClientSecret;
+        CPLString       m_osRefreshToken;
+
+        // for SERVICE_ACCOUNT
+        CPLString       m_osPrivateKey;
+        CPLString       m_osClientEmail;
+        CPLString       m_osScope;
+        CPLStringList   m_aosAdditionalClaims;
+
+        CPLStringList   m_aosOptions;
+};
 
 /**
  * @brief The IHTTPAuth class is base class for HTTP Authorization headers
@@ -187,7 +285,7 @@ class CPLHTTPAuthStore
 {
 public:
     static bool Add(const char *pszUrl, char **papszOptions,
-                    HTTPAuthNotifyFunc func = NULL);
+                    HTTPAuthNotifyFunc func = nullptr);
     static CPLHTTPAuthStore& instance();
 
 public:
@@ -206,9 +304,6 @@ private:
     std::vector<IHTTPAuth*> m_poAuths;
 };
 
-
-
-/*! @endcond */
 #endif // __cplusplus
 
 #endif /* ndef CPL_HTTP_H_INCLUDED */

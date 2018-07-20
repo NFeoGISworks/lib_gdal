@@ -80,7 +80,7 @@ class OGRWFSSortDesc
 
 class OGRWFSDataSource;
 
-class OGRWFSLayer : public OGRLayer
+class OGRWFSLayer final: public OGRLayer
 {
     OGRWFSDataSource*   poDS;
 
@@ -196,10 +196,10 @@ class OGRWFSLayer : public OGRLayer
 
     virtual OGRErr      SetIgnoredFields( const char **papszFields ) override;
 
-    int                 HasLayerDefn() { return poFeatureDefn != NULL; }
+    int                 HasLayerDefn() { return poFeatureDefn != nullptr; }
 
     OGRFeatureDefn*     ParseSchema(CPLXMLNode* psSchema);
-    OGRFeatureDefn*     BuildLayerDefn(OGRFeatureDefn* poSrcFDefn = NULL);
+    OGRFeatureDefn*     BuildLayerDefn(OGRFeatureDefn* poSrcFDefn = nullptr);
 
     OGRErr              DeleteFromFilter( CPLString osOGCFilter );
 
@@ -209,7 +209,7 @@ class OGRWFSLayer : public OGRLayer
 
     void                SetRequiredOutputFormat(const char* pszRequiredOutputFormatIn);
 
-    const char         *GetRequiredOutputFormat() { return pszRequiredOutputFormat; };
+    const char         *GetRequiredOutputFormat() { return pszRequiredOutputFormat; }
 
     void                SetOrderBy(const std::vector<OGRWFSSortDesc>& aoSortColumnsIn);
     bool                HasGotApproximateLayerDefn() { GetLayerDefn(); return bGotApproximateLayerDefn; }
@@ -222,7 +222,7 @@ class OGRWFSLayer : public OGRLayer
 /*                          OGRWFSJoinLayer                             */
 /************************************************************************/
 
-class OGRWFSJoinLayer : public OGRLayer
+class OGRWFSJoinLayer final: public OGRLayer
 {
     OGRWFSDataSource   *poDS;
     OGRFeatureDefn     *poFeatureDefn;
@@ -282,7 +282,7 @@ class OGRWFSJoinLayer : public OGRLayer
 /*                           OGRWFSDataSource                           */
 /************************************************************************/
 
-class OGRWFSDataSource : public OGRDataSource
+class OGRWFSDataSource final: public OGRDataSource
 {
     char*               pszName;
     bool                bRewriteFile;

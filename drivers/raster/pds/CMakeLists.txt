@@ -41,18 +41,19 @@ if(ENABLE_PDS_ISIS2_ISIS3_VICAR)
     )
 
     set(LIB_HHEADERS_PRIV
-        nasakeywordhandler.h 
-        vicarkeywordhandler.h 
+        nasakeywordhandler.h
+        vicarkeywordhandler.h
         ${CMAKE_SOURCE_DIR}/drivers/raster/raw/rawdataset.h
     )
 
     set(LIB_CSOURCES
-        pdsdataset.cpp 
-        isis2dataset.cpp 
-        isis3dataset.cpp 
-        vicardataset.cpp 
-        nasakeywordhandler.cpp 
-        vicarkeywordhandler.cpp	
+        pdsdataset.cpp
+        isis2dataset.cpp
+        isis3dataset.cpp
+        vicardataset.cpp
+        nasakeywordhandler.cpp
+        vicarkeywordhandler.cpp
+        pds4dataset.cpp
     )
 
     add_library(${TARGET_NAME} OBJECT ${LIB_HHEADERS} ${LIB_HHEADERS_PRIV} ${LIB_CSOURCES})
@@ -60,5 +61,5 @@ if(ENABLE_PDS_ISIS2_ISIS3_VICAR)
     # build target
     set(TARGET_OBJECTS ${TARGET_OBJECTS} $<TARGET_OBJECTS:${TARGET_NAME}> PARENT_SCOPE)
 else()
-    warning_msg("Skip pds")  
+    warning_msg("Skip pds")
 endif()

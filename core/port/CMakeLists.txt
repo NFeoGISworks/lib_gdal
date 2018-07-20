@@ -3,7 +3,7 @@
 # Purpose:  CMake build scripts
 # Author:   Dmitry Baryshnikov, polimax@mail.ru
 ################################################################################
-# Copyright (C) 2015-2017, NextGIS <info@nextgis.com>
+# Copyright (C) 2015, NextGIS <info@nextgis.com>
 # Copyright (C) 2012,2013,2014 Dmitry Baryshnikov
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
@@ -66,11 +66,19 @@ set(LIB_HHEADERS
     cpl_cpu_features.h
     cpl_google_cloud.h
     cpl_sha1.h
-    md5.h
+    cpl_json.h
+    cpl_mem_cache.h
 )
 
 set(LIB_HHEADERS_PRIV
     cpl_config_extras.h
+    cpl_alibaba_oss.h
+    cpl_azure.h
+    cpl_json_header.h
+    cpl_json_streaming_parser.h
+    cpl_md5.h
+    cpl_swift.h
+    cpl_safemaths.hpp
 )
 
 set(LIB_CSOURCES
@@ -82,6 +90,7 @@ set(LIB_CSOURCES
     cpl_findfile.cpp
     cpl_getexecpath.cpp
     cplgetsymbol.cpp
+    cpl_google_oauth2.cpp
     cpl_hash_set.cpp
     cpl_http.cpp
     cplkeywordparser.cpp
@@ -120,8 +129,14 @@ set(LIB_CSOURCES
     cpl_vsi_error.cpp
     cpl_vsil_curl.cpp
     cpl_cpu_features.cpp
+    cpl_google_cloud.cpp
     cpl_sha1.cpp
-    md5.cpp
+    cpl_alibaba_oss.cpp
+    cpl_azure.cpp
+    cpl_json_streaming_parser.cpp
+    cpl_json.cpp
+    cpl_md5.cpp
+    cpl_swift.cpp
 )
 
 if(WIN32)
@@ -169,20 +184,10 @@ if(CURL_FOUND)
   list(APPEND LIB_HHEADERS_PRIV cpl_vsil_curl_priv.h)
   list(APPEND LIB_CSOURCES
       #cpl_vsil_curl.cpp
-      cpl_vsil_curl_streaming.cpp
-      cpl_google_oauth2.cpp
-      cpl_google_cloud.cpp )
-endif()
-
-if(JSONC_FOUND)
-    list(APPEND LIB_HHEADERS cpl_json.h)
-    list(APPEND LIB_CSOURCES cpl_json.cpp)
+      cpl_vsil_curl_streaming.cpp )
 endif()
 
 add_library(${TARGET_NAME} OBJECT ${LIB_HHEADERS} ${LIB_HHEADERS_PRIV} ${LIB_CSOURCES})
-if(DEPENDENCY_LIB)
-    add_dependencies(${TARGET_NAME} ${DEPENDENCY_LIB})
-endif()
 
 # Build target
 set(TARGET_OBJECTS ${TARGET_OBJECTS} $<TARGET_OBJECTS:${TARGET_NAME}> PARENT_SCOPE)

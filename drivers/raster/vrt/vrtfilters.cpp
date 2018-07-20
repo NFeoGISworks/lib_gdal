@@ -42,7 +42,7 @@
 #include "gdal.h"
 #include "gdal_priv.h"
 
-CPL_CVSID("$Id$");
+CPL_CVSID("$Id$")
 
 /*! @cond Doxygen_Suppress */
 
@@ -106,7 +106,7 @@ void VRTFilteredSource::SetFilteringDataTypesSupported( int nTypeCount,
 /*                          IsTypeSupported()                           */
 /************************************************************************/
 
-int VRTFilteredSource::IsTypeSupported( GDALDataType eTestType )
+int VRTFilteredSource::IsTypeSupported( GDALDataType eTestType ) const
 
 {
     for( int i = 0; i < m_nSupportedTypesCount; i++ )
@@ -123,7 +123,8 @@ int VRTFilteredSource::IsTypeSupported( GDALDataType eTestType )
 /************************************************************************/
 
 CPLErr
-VRTFilteredSource::RasterIO( int nXOff, int nYOff, int nXSize, int nYSize,
+VRTFilteredSource::RasterIO( GDALDataType eBandDataType,
+                             int nXOff, int nYOff, int nXSize, int nYSize,
                              void *pData, int nBufXSize, int nBufYSize,
                              GDALDataType eBufType,
                              GSpacing nPixelSpace,
@@ -138,7 +139,8 @@ VRTFilteredSource::RasterIO( int nXOff, int nYOff, int nXSize, int nYSize,
 /* -------------------------------------------------------------------- */
     if( nBufXSize != nXSize || nBufYSize != nYSize )
     {
-        return VRTComplexSource::RasterIO( nXOff, nYOff, nXSize, nYSize,
+        return VRTComplexSource::RasterIO( eBandDataType,
+                                           nXOff, nYOff, nXSize, nYSize,
                                            pData, nBufXSize, nBufYSize,
                                            eBufType, nPixelSpace, nLineSpace,
                                            psExtraArg );
@@ -224,7 +226,7 @@ VRTFilteredSource::RasterIO( int nXOff, int nYOff, int nXSize, int nYSize,
         VSI_CALLOC_VERBOSE( nExtraXSize * nExtraYSize,
                    GDALGetDataTypeSize(eOperDataType) / 8 ) );
 
-    if( pabyWorkData == NULL )
+    if( pabyWorkData == nullptr )
     {
         return CE_Failure;
     }
@@ -239,7 +241,7 @@ VRTFilteredSource::RasterIO( int nXOff, int nYOff, int nXSize, int nYSize,
 /* -------------------------------------------------------------------- */
     GByte *pabyOutData = static_cast<GByte *>(
         VSI_MALLOC3_VERBOSE( nExtraXSize, nExtraYSize, nPixelOffset ) );
-    if( pabyOutData == NULL )
+    if( pabyOutData == nullptr )
     {
         CPLFree( pabyWorkData );
         return CE_Failure;
@@ -395,7 +397,7 @@ VRTFilteredSource::RasterIO( int nXOff, int nYOff, int nXSize, int nYSize,
 VRTKernelFilteredSource::VRTKernelFilteredSource() :
     m_nKernelSize(0),
     m_bSeparable(FALSE),
-    m_padfKernelCoefs(NULL),
+    m_padfKernelCoefs(nullptr),
     m_bNormalized(FALSE)
 {
     GDALDataType aeSupTypes[] = { GDT_Float32 };
@@ -565,11 +567,13 @@ CPLErr VRTKernelFilteredSource::FilterData( int nXSize, int nYSize,
 /************************************************************************/
 
 CPLErr VRTKernelFilteredSource::XMLInit( CPLXMLNode *psTree,
-                                         const char *pszVRTPath )
+                                         const char *pszVRTPath,
+                                         void* pUniqueHandle )
 
 {
     {
-        const CPLErr eErr = VRTFilteredSource::XMLInit( psTree, pszVRTPath );
+        const CPLErr eErr = VRTFilteredSource::XMLInit( psTree, pszVRTPath,
+                                                        pUniqueHandle );
         if( eErr != CE_None )
             return eErr;
     }
@@ -623,8 +627,8 @@ CPLXMLNode *VRTKernelFilteredSource::SerializeToXML( const char *pszVRTPath )
 {
     CPLXMLNode *psSrc = VRTFilteredSource::SerializeToXML( pszVRTPath );
 
-    if( psSrc == NULL )
-        return NULL;
+    if( psSrc == nullptr )
+        return nullptr;
 
     CPLFree( psSrc->pszValue );
     psSrc->pszValue = CPLStrdup("KernelFilteredSource" );
@@ -665,19 +669,20 @@ CPLXMLNode *VRTKernelFilteredSource::SerializeToXML( const char *pszVRTPath )
 /*                       VRTParseFilterSources()                        */
 /************************************************************************/
 
-VRTSource *VRTParseFilterSources( CPLXMLNode *psChild, const char *pszVRTPath )
+VRTSource *VRTParseFilterSources( CPLXMLNode *psChild, const char *pszVRTPath,
+                                  void* pUniqueHandle )
 
 {
     if( EQUAL(psChild->pszValue, "KernelFilteredSource") )
     {
         VRTSource *poSrc = new VRTKernelFilteredSource();
-        if( poSrc->XMLInit( psChild, pszVRTPath ) == CE_None )
+        if( poSrc->XMLInit( psChild, pszVRTPath, pUniqueHandle ) == CE_None )
             return poSrc;
 
         delete poSrc;
     }
 
-    return NULL;
+    return nullptr;
 }
 
 /*! @endcond */

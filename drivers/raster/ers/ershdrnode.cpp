@@ -30,7 +30,7 @@
 #include "cpl_string.h"
 #include "ershdrnode.h"
 
-CPL_CVSID("$Id$");
+CPL_CVSID("$Id$")
 
 /************************************************************************/
 /*                             ERSHdrNode()                             */
@@ -39,9 +39,9 @@ CPL_CVSID("$Id$");
 ERSHdrNode::ERSHdrNode() :
     nItemMax(0),
     nItemCount(0),
-    papszItemName(NULL),
-    papszItemValue(NULL),
-    papoItemChild(NULL)
+    papszItemName(nullptr),
+    papszItemValue(nullptr),
+    papoItemChild(nullptr)
 {}
 
 /************************************************************************/
@@ -53,9 +53,9 @@ ERSHdrNode::~ERSHdrNode()
 {
     for( int i = 0; i < nItemCount; i++ )
     {
-        if( papoItemChild[i] != NULL )
+        if( papoItemChild[i] != nullptr )
             delete papoItemChild[i];
-        if( papszItemValue[i] != NULL )
+        if( papszItemValue[i] != nullptr )
             CPLFree( papszItemValue[i] );
         CPLFree( papszItemName[i] );
     }
@@ -105,7 +105,7 @@ int ERSHdrNode::ReadLine( VSILFILE * fp, CPLString &osLine )
     {
         const char *pszNewLine = CPLReadLineL( fp );
 
-        if( pszNewLine == NULL )
+        if( pszNewLine == nullptr )
             return FALSE;
 
         osLine += pszNewLine;
@@ -146,9 +146,16 @@ int ERSHdrNode::ReadLine( VSILFILE * fp, CPLString &osLine )
 /*      This function is used recursively to read sub-objects.          */
 /************************************************************************/
 
-int ERSHdrNode::ParseChildren( VSILFILE * fp )
+int ERSHdrNode::ParseChildren( VSILFILE * fp, int nRecLevel )
 
 {
+    if( nRecLevel == 100 ) // arbitrary limit
+    {
+        CPLError(CE_Failure, CPLE_AppDefined,
+                 "Too many recursion level while parsing .ers header");
+        return false;
+    }
+
     while( true )
     {
 /* -------------------------------------------------------------------- */
@@ -175,7 +182,7 @@ int ERSHdrNode::ParseChildren( VSILFILE * fp )
             MakeSpace();
             papszItemName[nItemCount] = CPLStrdup(osName);
             papszItemValue[nItemCount] = CPLStrdup(osValue);
-            papoItemChild[nItemCount] = NULL;
+            papoItemChild[nItemCount] = nullptr;
 
             nItemCount++;
         }
@@ -190,12 +197,12 @@ int ERSHdrNode::ParseChildren( VSILFILE * fp )
 
             MakeSpace();
             papszItemName[nItemCount] = CPLStrdup(osName);
-            papszItemValue[nItemCount] = NULL;
+            papszItemValue[nItemCount] = nullptr;
             papoItemChild[nItemCount] = new ERSHdrNode();
 
             nItemCount++;
 
-            if( !papoItemChild[nItemCount-1]->ParseChildren( fp ) )
+            if( !papoItemChild[nItemCount-1]->ParseChildren( fp, nRecLevel + 1 ) )
                 return FALSE;
         }
 
@@ -236,7 +243,7 @@ int ERSHdrNode::WriteSelf( VSILFILE * fp, int nIndent )
 
     for( int i = 0; i < nItemCount; i++ )
     {
-        if( papszItemValue[i] != NULL )
+        if( papszItemValue[i] != nullptr )
         {
             if( VSIFPrintfL( fp, "%s%s\t= %s\n",
                              oIndent.c_str(),
@@ -273,13 +280,13 @@ const char *ERSHdrNode::Find( const char *pszPath, const char *pszDefault )
 /*      If this is the final component of the path, search for a        */
 /*      matching child and return the value.                            */
 /* -------------------------------------------------------------------- */
-    if( strchr(pszPath,'.') == NULL )
+    if( strchr(pszPath,'.') == nullptr )
     {
         for( int i = 0; i < nItemCount; i++ )
         {
             if( EQUAL(pszPath,papszItemName[i]) )
             {
-                if( papszItemValue[i] != NULL )
+                if( papszItemValue[i] != nullptr )
                 {
                     if( papszItemValue[i][0] == '"' )
                     {
@@ -313,7 +320,7 @@ const char *ERSHdrNode::Find( const char *pszPath, const char *pszDefault )
     {
         if( EQUAL(osPathFirst,papszItemName[i]) )
         {
-            if( papoItemChild[i] != NULL )
+            if( papoItemChild[i] != nullptr )
                 return papoItemChild[i]->Find( osPathRest, pszDefault );
 
             return pszDefault;
@@ -333,9 +340,9 @@ const char *ERSHdrNode::FindElem( const char *pszPath, int iElem,
                                   const char *pszDefault )
 
 {
-    const char *pszArray = Find( pszPath, NULL );
+    const char *pszArray = Find( pszPath, nullptr );
 
-    if( pszArray == NULL )
+    if( pszArray == nullptr )
         return pszDefault;
 
     bool bDefault = true;
@@ -380,7 +387,7 @@ ERSHdrNode *ERSHdrNode::FindNode( const char *pszPath )
     {
         if( EQUAL(osPathFirst,papszItemName[i]) )
         {
-            if( papoItemChild[i] != NULL )
+            if( papoItemChild[i] != nullptr )
             {
                 if( osPathRest.length() > 0 )
                     return papoItemChild[i]->FindNode( osPathRest );
@@ -388,11 +395,11 @@ ERSHdrNode *ERSHdrNode::FindNode( const char *pszPath )
                     return papoItemChild[i];
             }
             else
-                return NULL;
+                return nullptr;
         }
     }
 
-    return NULL;
+    return nullptr;
 }
 
 /************************************************************************/
@@ -417,13 +424,13 @@ void ERSHdrNode::Set( const char *pszPath, const char *pszValue )
         CPLString osPathRest = osPath.substr(iDot+1);
         ERSHdrNode *poFirst = FindNode( osPathFirst );
 
-        if( poFirst == NULL )
+        if( poFirst == nullptr )
         {
             poFirst = new ERSHdrNode();
 
             MakeSpace();
             papszItemName[nItemCount] = CPLStrdup(osPathFirst);
-            papszItemValue[nItemCount] = NULL;
+            papszItemValue[nItemCount] = nullptr;
             papoItemChild[nItemCount] = poFirst;
             nItemCount++;
         }
@@ -438,7 +445,7 @@ void ERSHdrNode::Set( const char *pszPath, const char *pszValue )
     for( int i = 0; i < nItemCount; i++ )
     {
         if( EQUAL(osPath,papszItemName[i])
-            && papszItemValue[i] != NULL )
+            && papszItemValue[i] != nullptr )
         {
             CPLFree( papszItemValue[i] );
             papszItemValue[i] = CPLStrdup( pszValue );
@@ -449,6 +456,6 @@ void ERSHdrNode::Set( const char *pszPath, const char *pszValue )
     MakeSpace();
     papszItemName[nItemCount] = CPLStrdup(osPath);
     papszItemValue[nItemCount] = CPLStrdup(pszValue);
-    papoItemChild[nItemCount] = NULL;
+    papoItemChild[nItemCount] = nullptr;
     nItemCount++;
 }

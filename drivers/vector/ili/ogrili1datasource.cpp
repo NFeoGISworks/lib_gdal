@@ -35,20 +35,20 @@
 
 #include <string>
 
-CPL_CVSID("$Id$");
+CPL_CVSID("$Id$")
 
 /************************************************************************/
 /*                         OGRILI1DataSource()                         */
 /************************************************************************/
 
 OGRILI1DataSource::OGRILI1DataSource() :
-    pszName(NULL),
+    pszName(nullptr),
     poImdReader(new ImdReader(1)),
-    poReader(NULL),
-    fpTransfer(NULL),
-    pszTopic(NULL),
+    poReader(nullptr),
+    fpTransfer(nullptr),
+    pszTopic(nullptr),
     nLayers(0),
-    papoLayers(NULL)
+    papoLayers(nullptr)
 {}
 
 /************************************************************************/
@@ -93,7 +93,7 @@ int OGRILI1DataSource::Open( const char * pszNewName,
 
     std::string osBasename;
     std::string osModelFilename;
-    if( CSLFetchNameValue(papszOpenOptionsIn, "MODEL") != NULL )
+    if( CSLFetchNameValue(papszOpenOptionsIn, "MODEL") != nullptr )
     {
         osBasename = pszNewName;
         osModelFilename = CSLFetchNameValue(papszOpenOptionsIn, "MODEL");
@@ -119,7 +119,7 @@ int OGRILI1DataSource::Open( const char * pszNewName,
 /*      Open the source file.                                           */
 /* -------------------------------------------------------------------- */
     VSILFILE *fp = VSIFOpenL( osBasename.c_str(), "r" );
-    if( fp == NULL )
+    if( fp == nullptr )
     {
         if( !bTestOpen )
             CPLError( CE_Failure, CPLE_OpenFailed,
@@ -143,7 +143,7 @@ int OGRILI1DataSource::Open( const char * pszNewName,
         else
             szHeader[nLen] = '\0';
 
-        if( strstr(szHeader,"SCNT") == NULL )
+        if( strstr(szHeader,"SCNT") == nullptr )
         {
             VSIFCloseL( fp );
             return FALSE;
@@ -157,7 +157,7 @@ int OGRILI1DataSource::Open( const char * pszNewName,
     VSIFCloseL( fp );
 
     poReader = CreateILI1Reader();
-    if( poReader == NULL )
+    if( poReader == nullptr )
     {
         CPLError( CE_Failure, CPLE_AppDefined,
                   "File %s appears to be ILI1 but the ILI1 reader cannot\n"
@@ -185,7 +185,7 @@ int OGRILI1DataSource::Open( const char * pszNewName,
     poReader->ReadFeatures();
 
     if( bResetConfigOption )
-        CPLSetThreadLocalConfigOption("OGR_ARC_STEPSIZE", NULL);
+        CPLSetThreadLocalConfigOption("OGR_ARC_STEPSIZE", nullptr);
 
     return TRUE;
 }
@@ -212,7 +212,7 @@ int OGRILI1DataSource::Create( const char *pszFilename,
 /* -------------------------------------------------------------------- */
     fpTransfer = VSIFOpenL( osBasename.c_str(), "w+b" );
 
-    if( fpTransfer == NULL )
+    if( fpTransfer == nullptr )
     {
         CPLError( CE_Failure, CPLE_OpenFailed,
                   "Failed to create %s:\n%s",
@@ -239,7 +239,7 @@ int OGRILI1DataSource::Create( const char *pszFilename,
 /* -------------------------------------------------------------------- */
     VSIFPrintfL( fpTransfer, "SCNT\n" );
     VSIFPrintfL( fpTransfer, "OGR/GDAL %s, INTERLIS Driver\n",
-                GDAL_RELEASE_NAME );
+                 GDALVersionInfo("RELEASE_NAME") );
     VSIFPrintfL( fpTransfer, "////\n" );
     VSIFPrintfL( fpTransfer, "MTID INTERLIS1\n" );
     const char* modelname = poImdReader->mainModelName.c_str();
@@ -253,7 +253,7 @@ static char *ExtractTopic(const char * pszLayerName)
   const char *table = strchr(pszLayerName, '_');
   while (table && table[1] !=  '_') table = strchr(table+1, '_');
   return (table) ? CPLScanString(
-      pszLayerName, static_cast<int>(table-pszLayerName), FALSE, FALSE) : NULL;
+      pszLayerName, static_cast<int>(table-pszLayerName), FALSE, FALSE) : nullptr;
 }
 
 /************************************************************************/
@@ -274,7 +274,7 @@ OGRILI1DataSource::ICreateLayer( const char * pszLayerName,
     if (topic)
     {
       table = pszLayerName+strlen(topic)+2; //after "__"
-      if (pszTopic == NULL || !EQUAL(topic, pszTopic))
+      if (pszTopic == nullptr || !EQUAL(topic, pszTopic))
       {
         if (pszTopic)
         {
@@ -291,7 +291,7 @@ OGRILI1DataSource::ICreateLayer( const char * pszLayerName,
     }
     else
     {
-      if (pszTopic == NULL) pszTopic = CPLStrdup("Unknown");
+      if (pszTopic == nullptr) pszTopic = CPLStrdup("Unknown");
       VSIFPrintfL( fpTransfer, "TOPI %s\n", pszTopic );
     }
     VSIFPrintfL( fpTransfer, "TABL %s\n", table );
@@ -331,6 +331,12 @@ int OGRILI1DataSource::TestCapability( const char * pszCap )
 
 OGRLayer *OGRILI1DataSource::GetLayer( int iLayer )
 {
+  if( !poReader )
+  {
+      if( iLayer < 0 || iLayer >= nLayers )
+          return nullptr;
+      return papoLayers[iLayer];
+  }
   return poReader->GetLayer( iLayer );
 }
 
@@ -340,6 +346,12 @@ OGRLayer *OGRILI1DataSource::GetLayer( int iLayer )
 
 OGRILI1Layer *OGRILI1DataSource::GetLayerByName( const char* pszLayerName )
 {
+  if( !poReader )
+  {
+      return reinterpret_cast<OGRILI1Layer *>(
+          OGRDataSource::GetLayerByName(pszLayerName));
+  }
+
   return reinterpret_cast<OGRILI1Layer *>(
       poReader->GetLayerByName( pszLayerName ) );
 }

@@ -28,14 +28,6 @@
 if(ENABLE_SQLITE_GPKG)
     set(TARGET_NAME com_gpkg)
 
-    # TODO: add spatialite support.
-    #find_anyproject(... spatialite ...)
-    #if(... spatialite found ...)
-    #   if(SPATIALITE_412_OR_LATER)
-    #       add_definitions(-DSPATIALITE_412_OR_LATER)
-    #   endif()
-    #endif()
-
     if(DEFINED SQLITE_HAS_COLUMN_METADATA)
         add_definitions(-DSQLITE_HAS_COLUMN_METADATA)
     endif()
@@ -65,9 +57,6 @@ if(ENABLE_SQLITE_GPKG)
     )
 
     add_library(${TARGET_NAME} OBJECT ${LIB_HHEADERS} ${LIB_HHEADERS_PRIV} ${LIB_CSOURCES})
-    if(DEPENDENCY_LIB)
-        add_dependencies(${TARGET_NAME} ${DEPENDENCY_LIB})
-    endif()
 
     # build target
     set(TARGET_OBJECTS ${TARGET_OBJECTS} $<TARGET_OBJECTS:${TARGET_NAME}> PARENT_SCOPE)

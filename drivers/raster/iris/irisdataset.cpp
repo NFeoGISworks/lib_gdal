@@ -37,7 +37,7 @@
 #include <algorithm>
 #include <sstream>
 
-CPL_CVSID("$Id$");
+CPL_CVSID("$Id$")
 
 static double DEG2RAD = M_PI / 180.0;
 static double RAD2DEG = 180.0 / M_PI;
@@ -70,9 +70,10 @@ class IRISDataset : public GDALPamDataset
     double                adfGeoTransform[6];
     bool                  bHasLoadedProjection;
     void                  LoadProjection();
-    static std::pair<double, double> GeodesicCalculation(
+    static bool GeodesicCalculation(
         float fLat, float fLon, float fAngle, float fDist,
-        float fEquatorialRadius, float fPolarRadius, float fFlattening );
+        float fEquatorialRadius, float fPolarRadius, float fFlattening,
+        std::pair<double, double>& oOutPair);
 
 public:
     IRISDataset();
@@ -166,7 +167,7 @@ public:
 /************************************************************************/
 
 IRISRasterBand::IRISRasterBand( IRISDataset *poDSIn, int nBandIn ) :
-    pszRecord(NULL),
+    pszRecord(nullptr),
     bBufferAllocFailed(false)
 {
     poDS = poDSIn;
@@ -202,7 +203,7 @@ CPLErr IRISRasterBand::IReadBlock( int /* nBlockXOff */,
     else if( poGDS->nDataTypeCode == 32 ) nDataLength = 1;
 
     // We allocate space for storing a record:
-    if( pszRecord == NULL )
+    if( pszRecord == nullptr )
     {
         if( bBufferAllocFailed )
             return CE_Failure;
@@ -210,7 +211,7 @@ CPLErr IRISRasterBand::IReadBlock( int /* nBlockXOff */,
         pszRecord = static_cast<unsigned char *>(
             VSI_MALLOC_VERBOSE(nBlockXSize*nDataLength));
 
-        if( pszRecord == NULL )
+        if( pszRecord == nullptr )
         {
             bBufferAllocFailed = true;
             return CE_Failure;
@@ -391,17 +392,17 @@ double IRISRasterBand::GetNoDataValue( int * pbSuccess )
 /************************************************************************/
 
 IRISDataset::IRISDataset() :
-    fp(NULL),
+    fp(nullptr),
     bNoDataSet(false),
     dfNoDataValue(0.0),
     nProductCode(0),
     nDataTypeCode(0),
     nProjectionCode(0),
     fNyquistVelocity(0.0),
-    pszSRS_WKT(NULL),
+    pszSRS_WKT(nullptr),
     bHasLoadedProjection(false)
 {
-    std::fill_n(abyHeader, CPL_ARRAYSIZE(abyHeader), 0);
+    std::fill_n(abyHeader, CPL_ARRAYSIZE(abyHeader), static_cast<GByte>(0));
     adfGeoTransform[0] = 0.0;
     adfGeoTransform[1] = 1.0;
     adfGeoTransform[2] = 0.0;
@@ -418,7 +419,7 @@ IRISDataset::~IRISDataset()
 
 {
     FlushCache();
-    if( fp != NULL )
+    if( fp != nullptr )
         VSIFCloseL( fp );
     CPLFree( pszSRS_WKT );
 }
@@ -476,12 +477,28 @@ void IRISDataset::LoadProjection()
 
     const float fScaleX = CPL_LSBSINT32PTR(abyHeader + 88 + 12 ) / 100.0f;
     const float fScaleY = CPL_LSBSINT32PTR(abyHeader + 92 + 12 ) / 100.0f;
+    if( fScaleX <= 0.0f || fScaleY <= 0.0f ||
+        fScaleX >= fPolarRadius || fScaleY >= fPolarRadius )
+        return;
 
     OGRSpatialReference oSRSOut;
 
     // Mercator projection.
     if( EQUAL(aszProjections[nProjectionCode],"Mercator") )
     {
+        std::pair<double, double> oPositionX2;
+        if( !GeodesicCalculation(
+                fCenterLat, fCenterLon, 90.0f, fScaleX,
+                fEquatorialRadius, fPolarRadius, fFlattening,
+                oPositionX2) )
+            return;
+        std::pair<double, double> oPositionY2;
+        if( !GeodesicCalculation(
+                fCenterLat, fCenterLon, 0.0f, fScaleY,
+                fEquatorialRadius, fPolarRadius, fFlattening,
+                oPositionY2) )
+            return;
+
         oSRSOut.SetGeogCS(
             "unnamed ellipse",
             "unknown",
@@ -508,26 +525,17 @@ void IRISDataset::LoadProjection()
         OGRCoordinateTransformation *poTransform =
             OGRCreateCoordinateTransformation( &oSRSLatLon, &oSRSOut );
 
-        const std::pair<double, double> oPositionX2 =
-            GeodesicCalculation(
-                fCenterLat, fCenterLon, 90.0f, fScaleX,
-                fEquatorialRadius, fPolarRadius, fFlattening);
-        const std::pair<double, double> oPositionY2 =
-            GeodesicCalculation(
-                fCenterLat, fCenterLon, 0.0f, fScaleY,
-                fEquatorialRadius, fPolarRadius, fFlattening);
-
         const double dfLon2 = oPositionX2.first;
         const double dfLat2 = oPositionY2.second;
 
         double dfX = fCenterLon ;
         double dfY = fCenterLat ;
-        if( poTransform == NULL || !poTransform->Transform( 1, &dfX, &dfY ) )
+        if( poTransform == nullptr || !poTransform->Transform( 1, &dfX, &dfY ) )
              CPLError( CE_Failure, CPLE_None, "Transformation Failed" );
 
         double dfX2 = dfLon2;
         double dfY2 = dfLat2;
-        if( poTransform == NULL || !poTransform->Transform( 1, &dfX2, &dfY2 ) )
+        if( poTransform == nullptr || !poTransform->Transform( 1, &dfX2, &dfY2 ) )
              CPLError( CE_Failure, CPLE_None, "Transformation Failed" );
 
         adfGeoTransform[0] = dfX - (fRadarLocX * (dfX2 - dfX));
@@ -587,10 +595,11 @@ void IRISDataset::LoadProjection()
 /*       http://www.ngs.noaa.gov/PUBS_LIB/inverse.pdf                                             */
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  */
 
-std::pair<double, double>
+bool
 IRISDataset::GeodesicCalculation(
     float fLat, float fLon, float fAngle, float fDist, float fEquatorialRadius,
-    float fPolarRadius, float fFlattening )
+    float fPolarRadius, float fFlattening,
+    std::pair<double, double>& oOutPair )
 {
     const double dfAlpha1 = DEG2RAD * fAngle;
     const double dfSinAlpha1 = sin(dfAlpha1);
@@ -618,6 +627,7 @@ IRISDataset::GeodesicCalculation(
     double dfCosSigma = 0.0;
     double dfCos2SigmaM = 0.0;
 
+    int nIter = 0;
     while( fabs(dfSigma-dfSigmaP) > 1e-12 )
     {
         dfCos2SigmaM = cos(2*dfSigma1 + dfSigma);
@@ -630,6 +640,9 @@ IRISDataset::GeodesicCalculation(
                 (-3+4*dfCos2SigmaM*dfCos2SigmaM)));
         dfSigmaP = dfSigma;
         dfSigma = fDist / (fPolarRadius*dfA) + dfDeltaSigma;
+        nIter ++;
+        if( nIter == 100 )
+            return false;
     }
 
     const double dfTmp = dfSinU1*dfSinSigma - dfCosU1*dfCosSigma*dfCosAlpha1;
@@ -651,9 +664,9 @@ IRISDataset::GeodesicCalculation(
     if( dfLon2 < -1*M_PI )
         dfLon2 = dfLon2 + 2 * M_PI;
 
-    std::pair<double, double> oOutput(dfLon2 * RAD2DEG, dfLat2 * RAD2DEG);
+    oOutPair = std::pair<double, double>(dfLon2 * RAD2DEG, dfLat2 * RAD2DEG);
 
-    return oOutput;
+    return true;
 }
 
 /************************************************************************/
@@ -723,8 +736,8 @@ static void FillString( char* szBuffer, size_t nBufferSize, void* pSrcBuffer )
 GDALDataset *IRISDataset::Open( GDALOpenInfo * poOpenInfo )
 
 {
-    if( !Identify(poOpenInfo) )
-        return NULL;
+    if( !Identify(poOpenInfo) || poOpenInfo->fpL == nullptr )
+        return nullptr;
 /* -------------------------------------------------------------------- */
 /*      Confirm the requested access is supported.                      */
 /* -------------------------------------------------------------------- */
@@ -733,20 +746,15 @@ GDALDataset *IRISDataset::Open( GDALOpenInfo * poOpenInfo )
         CPLError( CE_Failure, CPLE_NotSupported,
                   "The IRIS driver does not support update access to existing"
                   " datasets." );
-        return NULL;
+        return nullptr;
     }
 
 /* -------------------------------------------------------------------- */
 /*      Create a corresponding GDALDataset.                             */
 /* -------------------------------------------------------------------- */
     IRISDataset *poDS = new IRISDataset();
-
-    poDS->fp = VSIFOpenL( poOpenInfo->pszFilename, "rb" );
-    if( poDS->fp == NULL )
-    {
-        delete poDS;
-        return NULL;
-    }
+    poDS->fp = poOpenInfo->fpL;
+    poOpenInfo->fpL = nullptr;
 
 /* -------------------------------------------------------------------- */
 /*      Read the header.                                                */
@@ -765,13 +773,13 @@ GDALDataset *IRISDataset::Open( GDALOpenInfo * poOpenInfo )
                   "Invalid dimensions : %d x %d",
                   poDS->nRasterXSize, poDS->nRasterYSize);
         delete poDS;
-        return NULL;
+        return nullptr;
     }
 
     if( !GDALCheckBandCount(nNumBands, TRUE) )
     {
         delete poDS;
-        return NULL;
+        return nullptr;
     }
 
 /* -------------------------------------------------------------------- */
@@ -784,7 +792,7 @@ GDALDataset *IRISDataset::Open( GDALOpenInfo * poOpenInfo )
     if( poDS->nProductCode >= CPL_ARRAYSIZE(aszProductNames) )
     {
         delete poDS;
-        return NULL;
+        return nullptr;
     }
 
     poDS->SetMetadataItem("PRODUCT", aszProductNames[poDS->nProductCode]);
@@ -793,7 +801,7 @@ GDALDataset *IRISDataset::Open( GDALOpenInfo * poOpenInfo )
     if( poDS->nDataTypeCode >= CPL_ARRAYSIZE(aszDataTypeCodes) )
     {
         delete poDS;
-        return NULL;
+        return nullptr;
     }
     poDS->SetMetadataItem("DATA_TYPE_CODE",
                           aszDataTypeCodes[poDS->nDataTypeCode]);
@@ -801,7 +809,7 @@ GDALDataset *IRISDataset::Open( GDALOpenInfo * poOpenInfo )
     if( poDS->nDataTypeCode >= CPL_ARRAYSIZE(aszDataTypes) )
     {
         delete poDS;
-        return NULL;
+        return nullptr;
     }
     poDS->SetMetadataItem("DATA_TYPE",
                           aszDataTypes[poDS->nDataTypeCode]);
@@ -811,7 +819,7 @@ GDALDataset *IRISDataset::Open( GDALOpenInfo * poOpenInfo )
     if( nDataTypeInputCode >= CPL_ARRAYSIZE(aszDataTypeCodes) )
     {
         delete poDS;
-        return NULL;
+        return nullptr;
     }
     poDS->SetMetadataItem("DATA_TYPE_INPUT_CODE",
                           aszDataTypeCodes[nDataTypeInputCode]);
@@ -821,7 +829,7 @@ GDALDataset *IRISDataset::Open( GDALOpenInfo * poOpenInfo )
     if( nDataTypeInput >= CPL_ARRAYSIZE(aszDataTypes) )
     {
         delete poDS;
-        return NULL;
+        return nullptr;
     }
     poDS->SetMetadataItem("DATA_TYPE_INPUT",
                           aszDataTypes[nDataTypeInput]);
@@ -831,7 +839,7 @@ GDALDataset *IRISDataset::Open( GDALOpenInfo * poOpenInfo )
     if( poDS->nProjectionCode >= CPL_ARRAYSIZE(aszProjections) )
     {
         delete poDS;
-        return NULL;
+        return nullptr;
     }
 
     // Times.
@@ -1130,7 +1138,7 @@ GDALDataset *IRISDataset::Open( GDALOpenInfo * poOpenInfo )
 void GDALRegister_IRIS()
 
 {
-    if( GDALGetDriverByName( "IRIS" ) != NULL )
+    if( GDALGetDriverByName( "IRIS" ) != nullptr )
         return;
 
     GDALDriver *poDriver = new GDALDriver();

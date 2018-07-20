@@ -41,9 +41,9 @@
 #pragma warning( disable : 4324 ) /* 'my_alignment_imp<0x02>' : structure was padded due to __declspec(align()) */
 #pragma warning( disable : 4201 ) /* nonstandard extension used : nameless struct/union */
 #pragma warning( disable : 4211 ) /* nonstandard extension used : redefined extern to static */
+#pragma warning( disable : 4005 ) /* warning C4005: 'HAVE_STRUCT_TIMESPEC': macro redefinition */
 #endif
 
-#include <my_global.h>
 #include <mysql.h>
 
 #ifdef _MSC_VER
@@ -115,7 +115,6 @@ class OGRMySQLLayer : public OGRLayer
     virtual OGRSpatialReference *GetSpatialRef() override;
 
     virtual const char *GetFIDColumn() override;
-    virtual const char *GetGeometryColumn() override;
 
     /* custom methods */
     virtual OGRFeature *RecordToFeature( char **papszRow, unsigned long * );
@@ -126,7 +125,7 @@ class OGRMySQLLayer : public OGRLayer
 /*                          OGRMySQLTableLayer                          */
 /************************************************************************/
 
-class OGRMySQLTableLayer : public OGRMySQLLayer
+class OGRMySQLTableLayer final: public OGRMySQLLayer
 {
     int                 bUpdateAccess;
 
@@ -181,7 +180,7 @@ class OGRMySQLTableLayer : public OGRMySQLLayer
 /*                         OGRMySQLResultLayer                          */
 /************************************************************************/
 
-class OGRMySQLResultLayer : public OGRMySQLLayer
+class OGRMySQLResultLayer final: public OGRMySQLLayer
 {
     void                BuildFullQueryStatement();
 
@@ -205,7 +204,7 @@ class OGRMySQLResultLayer : public OGRMySQLLayer
 /*                          OGRMySQLDataSource                          */
 /************************************************************************/
 
-class OGRMySQLDataSource : public OGRDataSource
+class OGRMySQLDataSource final: public OGRDataSource
 {
     OGRMySQLLayer       **papoLayers;
     int                 nLayers;
@@ -246,9 +245,9 @@ class OGRMySQLDataSource : public OGRDataSource
     OGRLayer            *GetLayer( int ) override;
 
     virtual OGRLayer    *ICreateLayer( const char *,
-                                      OGRSpatialReference * = NULL,
+                                      OGRSpatialReference * = nullptr,
                                       OGRwkbGeometryType = wkbUnknown,
-                                      char ** = NULL ) override;
+                                      char ** = nullptr ) override;
 
     int                 TestCapability( const char * ) override;
 
@@ -259,7 +258,7 @@ class OGRMySQLDataSource : public OGRDataSource
 
     // nonstandard
 
-    void                ReportError( const char * = NULL );
+    void                ReportError( const char * = nullptr );
 
     char               *LaunderName( const char * );
 

@@ -25,17 +25,6 @@
 # DEALINGS IN THE SOFTWARE.
 ################################################################################
 
-find_anyproject(GEOS DEFAULT ON)
-if(GEOS_FOUND)
-    add_definitions(-DHAVE_GEOS=1)
-    if(GEOS_INCLUDE_DIRS)
-        get_filename_component(GEOS_ROOT ${GEOS_INCLUDE_DIRS} PATH)
-        include_directories(${GEOS_ROOT}/capi)
-    endif()
-else()
-    message(WARNING "No geos support")
-endif()
-
 find_anyproject(PROJ4 DEFAULT ON)
 if(PROJ4_FOUND)
     add_definitions(-DHAVE_PROJ -DPROJ_STATIC)
@@ -67,7 +56,6 @@ set(LIB_HHEADERS
     ogr_srs_api.h
     ogr_geocoding.h
     ogrsf_frmts/ogrsf_frmts.h
-    ogr_geo_utils.h
 )
 
 set(LIB_HHEADERS_PRIV
@@ -80,6 +68,7 @@ set(LIB_HHEADERS_PRIV
     swq.h
     ogr_json_header.h
     ogr_libs.h
+    ogr_geo_utils.h
 )
 
 set(LIB_CSOURCES
@@ -144,6 +133,7 @@ set(LIB_CSOURCES
     ogr_geo_utils.cpp
 )
 
+
 if(EXPAT_FOUND)
     set(LIB_HHEADERS_PRIV ${LIB_HHEADERS_PRIV}
         ogr_expat.h
@@ -190,9 +180,6 @@ if(NOT GDAL_UPDATE_SWQ OR NOT BISON_FOUND)
 endif()
 
 add_library(${TARGET_NAME} OBJECT ${LIB_HHEADERS} ${LIB_HHEADERS_PRIV} ${LIB_CSOURCES})
-if(DEPENDENCY_LIB)
-    add_dependencies(${TARGET_NAME} ${DEPENDENCY_LIB})
-endif()
 
 # Build target
 set(TARGET_OBJECTS ${TARGET_OBJECTS} $<TARGET_OBJECTS:${TARGET_NAME}> PARENT_SCOPE)

@@ -28,7 +28,7 @@
 
 #include "sdts_al.h"
 
-CPL_CVSID("$Id$");
+CPL_CVSID("$Id$")
 
 /************************************************************************/
 /* ==================================================================== */
@@ -75,10 +75,13 @@ int SDTSRawPoint::Read( SDTS_IREF * poIREF, DDFRecord * poRecord )
     for( int iField = 0; iField < poRecord->GetFieldCount(); iField++ )
     {
         DDFField        *poField = poRecord->GetField( iField );
+        if( poField == nullptr )
+            return FALSE;
+        DDFFieldDefn* poFieldDefn = poField->GetFieldDefn();
+        if( poFieldDefn == nullptr )
+            return FALSE;
 
-        CPLAssert( poField != NULL );
-
-        const char *pszFieldName = poField->GetFieldDefn()->GetName();
+        const char *pszFieldName = poFieldDefn->GetName();
 
         if( EQUAL(pszFieldName,"PNTS") )
             oModId.Set( poField );
@@ -174,13 +177,13 @@ SDTSRawPoint * SDTSPointReader::GetNextPoint()
 /* -------------------------------------------------------------------- */
 /*      Read a record.                                                  */
 /* -------------------------------------------------------------------- */
-    if( oDDFModule.GetFP() == NULL )
-        return NULL;
+    if( oDDFModule.GetFP() == nullptr )
+        return nullptr;
 
     DDFRecord *poRecord = oDDFModule.ReadRecord();
 
-    if( poRecord == NULL )
-        return NULL;
+    if( poRecord == nullptr )
+        return nullptr;
 
 /* -------------------------------------------------------------------- */
 /*      Transform into a point feature.                                 */
@@ -193,5 +196,5 @@ SDTSRawPoint * SDTSPointReader::GetNextPoint()
     }
 
     delete poRawPoint;
-    return NULL;
+    return nullptr;
 }

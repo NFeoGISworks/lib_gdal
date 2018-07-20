@@ -37,6 +37,7 @@
 #include "cpl_string.h"
 
 #include <set>
+#include <unordered_set>
 #include <map>
 #include <vector>
 
@@ -64,10 +65,11 @@ class OGROSMComputedAttribute
         sqlite3_stmt  *hStmt;
         std::vector<CPLString> aosAttrToBind;
         std::vector<int> anIndexToBind;
+        bool         bHardcodedZOrder;
 
-        OGROSMComputedAttribute() : nIndex(-1), eType(OFTString), hStmt(NULL) {}
+        OGROSMComputedAttribute() : nIndex(-1), eType(OFTString), hStmt(nullptr), bHardcodedZOrder(false) {}
         explicit OGROSMComputedAttribute(const char* pszName) :
-                osName(pszName), nIndex(-1), eType(OFTString), hStmt(NULL) {}
+                osName(pszName), nIndex(-1), eType(OFTString), hStmt(nullptr), bHardcodedZOrder(false) {}
 };
 
 /************************************************************************/
@@ -163,7 +165,7 @@ class OGROSMLayer : public OGRLayer
 
     int                 AddFeature(OGRFeature* poFeature,
                                    int bAttrFilterAlreadyEvaluated,
-                                   int* pbFilteredOut = NULL,
+                                   int* pbFilteredOut = nullptr,
                                    int bCheckFeatureThreshold = TRUE);
     void                ForceResetReading();
 
@@ -203,7 +205,7 @@ class OGROSMLayer : public OGRLayer
     void                SetDeclareInterest(bool bIn) { bUserInterested = bIn; }
     bool                IsUserInterested() const { return bUserInterested; }
 
-    int                 HasAttributeFilter() const { return m_poAttrQuery != NULL; }
+    int                 HasAttributeFilter() const { return m_poAttrQuery != nullptr; }
     int                 EvaluateAttributeFilter(OGRFeature* poFeature);
 
     void                AddUnsignificantKey(const char* pszK);
@@ -321,7 +323,9 @@ class OGROSMDataSource : public OGRDataSource
 
     int                 nNodesInTransaction;
 
-    std::set<std::string> aoSetClosedWaysArePolygons;
+    std::unordered_set<std::string> aoSetClosedWaysArePolygons;
+    int                 nMinSizeKeysInSetClosedWaysArePolygons;
+    int                 nMaxSizeKeysInSetClosedWaysArePolygons;
 
     LonLat             *pasLonLatCache;
 

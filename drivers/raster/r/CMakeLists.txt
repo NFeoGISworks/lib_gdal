@@ -3,9 +3,9 @@
 # Purpose:  CMake build scripts
 # Author:   Mikhail Gusev, gusevmihs@gmail.com
 ################################################################################
-# Copyright (C) 2015-2017, NextGIS <info@nextgis.com>
+# Copyright (C) 2015-2016, NextGIS <info@nextgis.com>
 # Copyright (C) 2016 Mikhail Gusev
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
 # to deal in the Software without restriction, including without limitation
@@ -42,8 +42,8 @@ if(ENABLE_R)
     )
 
     set(LIB_CSOURCES
-        rdataset.cpp 
-        rcreatecopy.cpp	
+        rdataset.cpp
+        rcreatecopy.cpp
     )
 
     add_library(${TARGET_NAME} OBJECT ${LIB_HHEADERS} ${LIB_HHEADERS_PRIV} ${LIB_CSOURCES})
@@ -51,5 +51,5 @@ if(ENABLE_R)
     # build target
     set(TARGET_OBJECTS ${TARGET_OBJECTS} $<TARGET_OBJECTS:${TARGET_NAME}> PARENT_SCOPE)
 else()
-    warning_msg("Skip r")  
+    warning_msg("Skip r")
 endif()

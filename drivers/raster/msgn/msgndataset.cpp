@@ -37,7 +37,7 @@
 
 using namespace msg_native_format;
 
-CPL_CVSID("$Id$");
+CPL_CVSID("$Id$")
 
 typedef enum {
     MODE_VISIR,     // Visible and Infrared bands (1 through 11) in 10-bit raw mode
@@ -90,7 +90,7 @@ class MSGNRasterBand : public GDALRasterBand
     unsigned int band_in_file;      // The effective index of the band in the file
     open_mode_type open_mode;
 
-    double  GetNoDataValue (int *pbSuccess=NULL) override {
+    double  GetNoDataValue (int *pbSuccess=nullptr) override {
         if (pbSuccess) {
             *pbSuccess = 1;
         }
@@ -106,8 +106,8 @@ class MSGNRasterBand : public GDALRasterBand
         MSGNRasterBand( MSGNDataset *, int , open_mode_type mode, int orig_band_no, int band_in_file);
 
     virtual CPLErr IReadBlock( int, int, void * ) override;
-    virtual double GetMinimum( int *pbSuccess = NULL ) override;
-    virtual double GetMaximum(int *pbSuccess = NULL ) override;
+    virtual double GetMinimum( int *pbSuccess = nullptr ) override;
+    virtual double GetMaximum(int *pbSuccess = nullptr ) override;
     virtual const char* GetDescription() const override { return band_description; }
 };
 
@@ -290,8 +290,8 @@ double MSGNRasterBand::GetMaximum(int *pbSuccess ) {
 /************************************************************************/
 
 MSGNDataset::MSGNDataset() :
-    fp(NULL),
-    msg_reader_core(NULL),
+    fp(nullptr),
+    msg_reader_core(nullptr),
     pszProjection(CPLStrdup(""))
 {
     std::fill_n(adfGeoTransform, CPL_ARRAYSIZE(adfGeoTransform), 0);
@@ -304,7 +304,7 @@ MSGNDataset::MSGNDataset() :
 MSGNDataset::~MSGNDataset()
 
 {
-    if( fp != NULL )
+    if( fp != nullptr )
         VSIFCloseL( fp );
 
     if (msg_reader_core) {
@@ -365,11 +365,11 @@ GDALDataset *MSGNDataset::Open( GDALOpenInfo * poOpenInfo )
 /*      least one "\n#keyword" type signature in the first chunk of     */
 /*      the file.                                                       */
 /* -------------------------------------------------------------------- */
-    if( open_info->fpL == NULL || open_info->nHeaderBytes < 50 ) {
+    if( open_info->fpL == nullptr || open_info->nHeaderBytes < 50 ) {
         if (open_info != poOpenInfo) {
             delete open_info;
         }
-        return NULL;
+        return nullptr;
     }
 
     /* check if this is a "NATIVE" MSG format image */
@@ -378,7 +378,7 @@ GDALDataset *MSGNDataset::Open( GDALOpenInfo * poOpenInfo )
         if (open_info != poOpenInfo) {
             delete open_info;
         }
-        return NULL;
+        return nullptr;
     }
 
 /* -------------------------------------------------------------------- */
@@ -392,18 +392,18 @@ GDALDataset *MSGNDataset::Open( GDALOpenInfo * poOpenInfo )
         if (open_info != poOpenInfo) {
             delete open_info;
         }
-        return NULL;
+        return nullptr;
     }
 
 /* -------------------------------------------------------------------- */
 /*      Create a corresponding GDALDataset.                             */
 /* -------------------------------------------------------------------- */
     VSILFILE* fp = VSIFOpenL( open_info->pszFilename, "rb" );
-    if( fp == NULL ) {
+    if( fp == nullptr ) {
         if (open_info != poOpenInfo) {
             delete open_info;
         }
-        return NULL;
+        return nullptr;
     }
 
     MSGNDataset *poDS = new MSGNDataset();
@@ -423,7 +423,7 @@ GDALDataset *MSGNDataset::Open( GDALOpenInfo * poOpenInfo )
             delete open_info;
         }
         delete poDS;
-        return NULL;
+        return nullptr;
     }
 
     poDS->nRasterXSize = poDS->msg_reader_core->get_columns();
@@ -440,7 +440,7 @@ GDALDataset *MSGNDataset::Open( GDALOpenInfo * poOpenInfo )
     unsigned int i;
     unsigned int band_count = 1;
     unsigned int missing_band_count = 0;
-    unsigned char* bands = poDS->msg_reader_core->get_band_map();
+    const unsigned char* bands = poDS->msg_reader_core->get_band_map();
     unsigned char band_map[MSG_NUM_CHANNELS+1];   // map GDAL band numbers to MSG channels
     for (i=0; i < MSG_NUM_CHANNELS; i++) {
         if (bands[i]) {
@@ -504,10 +504,10 @@ GDALDataset *MSGNDataset::Open( GDALOpenInfo * poOpenInfo )
     );
 
     CPLFree(poDS->pszProjection);
-    poDS->pszProjection = NULL;
+    poDS->pszProjection = nullptr;
     oSRS.exportToWkt( &(poDS->pszProjection) );
 
-    CALIBRATION* cal = poDS->msg_reader_core->get_calibration_parameters();
+    const CALIBRATION* cal = poDS->msg_reader_core->get_calibration_parameters();
     char tagname[30];
     char field[300];
 
@@ -547,7 +547,7 @@ GDALDataset *MSGNDataset::Open( GDALOpenInfo * poOpenInfo )
 void GDALRegister_MSGN()
 
 {
-    if( GDALGetDriverByName( "MSGN" ) != NULL )
+    if( GDALGetDriverByName( "MSGN" ) != nullptr )
         return;
 
     GDALDriver *poDriver = new GDALDriver();

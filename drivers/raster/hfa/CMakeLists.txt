@@ -44,22 +44,18 @@ set(LIB_HHEADERS_PRIV
 )
 
 set(LIB_CSOURCES
-    hfacompress.cpp  
-    hfadictionary.cpp  
-    hfafield.cpp  
-    hfaopen.cpp              
+    hfacompress.cpp
+    hfadictionary.cpp
+    hfafield.cpp
+    hfaopen.cpp
     hfatype.cpp
-    hfaband.cpp     
-    hfadataset.cpp   
-    hfaentry.cpp       
-    hfa_overviews.cpp      
+    hfaband.cpp
+    hfadataset.cpp
+    hfaentry.cpp
+    hfa_overviews.cpp
 )
 
 add_library(${TARGET_NAME} OBJECT ${LIB_HHEADERS} ${LIB_HHEADERS_PRIV} ${LIB_CSOURCES})
 
 # build target
 set(TARGET_OBJECTS ${TARGET_OBJECTS} $<TARGET_OBJECTS:${TARGET_NAME}> PARENT_SCOPE)
-
-if(DEPENDENCY_LIB)
-    add_dependencies(${TARGET_NAME} ${DEPENDENCY_LIB})  
-endif() 

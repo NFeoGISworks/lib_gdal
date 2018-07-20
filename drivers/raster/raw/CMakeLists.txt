@@ -46,34 +46,34 @@ set(LIB_HHEADERS_PRIV
 set(LIB_CSOURCES
     rawdataset.cpp
     ace2dataset.cpp
-    doq1dataset.cpp  
-    envidataset.cpp     
-    gscdataset.cpp  
-    iscedataset.cpp  
-    loslasdataset.cpp  
-    pauxdataset.cpp  
+    doq1dataset.cpp
+    envidataset.cpp
+    gscdataset.cpp
+    iscedataset.cpp
+    loslasdataset.cpp
+    pauxdataset.cpp
     roipacdataset.cpp
-    atlsci_spheroid.cpp  
-    cpgdataset.cpp      
-    doq2dataset.cpp  
-    fastdataset.cpp     
-    gtxdataset.cpp  
-    krodataset.cpp   
-    mffdataset.cpp     
-    pnmdataset.cpp   
+    atlsci_spheroid.cpp
+    cpgdataset.cpp
+    doq2dataset.cpp
+    fastdataset.cpp
+    gtxdataset.cpp
+    krodataset.cpp
+    mffdataset.cpp
+    pnmdataset.cpp
     snodasdataset.cpp
-    ctable2dataset.cpp  
-    ehdrdataset.cpp  
-    fujibasdataset.cpp  
-    hkvdataset.cpp  
-    landataset.cpp   
+    ctable2dataset.cpp
+    ehdrdataset.cpp
+    fujibasdataset.cpp
+    hkvdataset.cpp
+    landataset.cpp
     ndfdataset.cpp
-    btdataset.cpp        
-    dipxdataset.cpp     
-    eirdataset.cpp   
-    genbindataset.cpp   
-    idadataset.cpp  
-    lcpdataset.cpp   
+    btdataset.cpp
+    dipxdataset.cpp
+    eirdataset.cpp
+    genbindataset.cpp
+    idadataset.cpp
+    lcpdataset.cpp
     ntv2dataset.cpp
     rrasterdataset.cpp
 )
@@ -86,4 +86,4 @@ set(TARGET_OBJECTS ${TARGET_OBJECTS} $<TARGET_OBJECTS:${TARGET_NAME}> PARENT_SCO
 # install headers
 if(NOT SKIP_INSTALL_HEADERS AND NOT SKIP_INSTALL_ALL )
     install(FILES ${LIB_HHEADERS} DESTINATION ${INSTALL_INC_DIR} COMPONENT headers)
-endif() 
+endif()

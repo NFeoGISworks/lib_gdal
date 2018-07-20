@@ -32,7 +32,7 @@
 #include "ogr_api.h"
 #include "cpl_error.h"
 
-CPL_CVSID("$Id$");
+CPL_CVSID("$Id$")
 
 /************************************************************************/
 /*                             OGRTriangle()                            */
@@ -79,7 +79,7 @@ OGRTriangle::OGRTriangle(const OGRPolygon& other, OGRErr &eErr)
     // If not, then eErr will contain the error description
     const OGRCurve *poCurve = other.getExteriorRingCurve();
     if (other.getNumInteriorRings() == 0 &&
-        poCurve != NULL && poCurve->get_IsClosed() &&
+        poCurve != nullptr && poCurve->get_IsClosed() &&
         poCurve->getNumPoints() == 4)
     {
         // everything is fine
@@ -217,7 +217,7 @@ OGRErr OGRTriangle::importFromWkb( const unsigned char *pabyData,
 /*      Instantiate from "((x y, x y, ...),(x y, ...),...)"             */
 /************************************************************************/
 
-OGRErr OGRTriangle::importFromWKTListOnly( char ** ppszInput,
+OGRErr OGRTriangle::importFromWKTListOnly( const char ** ppszInput,
                                           int bHasZ, int bHasM,
                                           OGRRawPoint*& paoPoints,
                                           int& nMaxPoints,
@@ -263,8 +263,7 @@ OGRErr OGRTriangle::addRingDirectly( OGRCurve * poNewRing )
 
 OGRPolygon* OGRTriangle::CasterToPolygon(OGRSurface* poSurface)
 {
-    OGRTriangle* poTriangle = dynamic_cast<OGRTriangle*>(poSurface);
-    CPLAssert(poTriangle);
+    OGRTriangle* poTriangle = poSurface->toTriangle();
     OGRPolygon* poRet = new OGRPolygon( *poTriangle );
     delete poTriangle;
     return poRet;
@@ -280,7 +279,7 @@ OGRSurfaceCasterToPolygon OGRTriangle::GetCasterToPolygon() const {
 
 OGRGeometry* OGRTriangle::CastToPolygon(OGRGeometry* poGeom)
 {
-    OGRGeometry* poRet = new OGRPolygon( *(OGRPolygon*)poGeom );
+    OGRGeometry* poRet = new OGRPolygon( *(poGeom->toPolygon()) );
     delete poGeom;
     return poRet;
 }

@@ -6,7 +6,7 @@
  * Author:   Martin Landa, landa.martin gmail.com
  *
  ******************************************************************************
- * Copyright (c) 2009-2010, 2012-2013, Martin Landa <landa.martin gmail.com>
+ * Copyright (c) 2012-2018, Martin Landa <landa.martin gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -51,7 +51,7 @@ private:
     bool           m_bLatin2;
 
     VSILFILE      *m_poFD;
-    char          *ReadLine( bool = false );
+    char          *ReadLine();
 
     void          AddInfo(const char *) override;
 
@@ -77,8 +77,8 @@ public:
     bool           IsSpatial() const override { return false; }
     bool           IsPreProcessed() const override { return false; }
     bool           IsValid() const override { return true; }
-    int            ReadDataBlocks() override;
-    int            ReadDataRecords(IVFKDataBlock * = NULL) override;
+    int            ReadDataBlocks(bool = false) override;
+    int            ReadDataRecords(IVFKDataBlock * = nullptr) override;
     int            LoadGeometry() override;
 
     int            GetDataBlockCount() const override { return m_nDataBlockCount; }
@@ -108,6 +108,7 @@ private:
     void           StoreInfo2DB();
 
     void           CreateIndex(const char *, const char *, const char *, bool = true);
+    void           CreateIndices();
 
     friend class   VFKFeatureSQLite;
 public:
@@ -116,13 +117,13 @@ public:
 
     bool          IsSpatial() const override { return m_bSpatial; }
     bool          IsPreProcessed() const override { return !m_bNewDb; }
-    bool          IsValid() const override { return m_poDB != NULL; }
-    int           ReadDataBlocks() override;
-    int           ReadDataRecords(IVFKDataBlock * = NULL) override;
+    bool          IsValid() const override { return m_poDB != nullptr; }
+    int           ReadDataBlocks(bool = false) override;
+    int           ReadDataRecords(IVFKDataBlock * = nullptr) override;
 
     sqlite3_stmt *PrepareStatement(const char *);
-    OGRErr        ExecuteSQL( const char *, bool = false );
-    OGRErr        ExecuteSQL(sqlite3_stmt *);
+    OGRErr        ExecuteSQL(const char *, CPLErr = CE_Failure);
+    OGRErr        ExecuteSQL(sqlite3_stmt *&);
 };
 
 #endif // GDAL_OGR_VFK_VFKREADERP_H_INCLUDED

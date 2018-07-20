@@ -72,6 +72,16 @@ void OGRCSVDriverRemoveFromMap(const char *pszName, GDALDataset *poDS);
 
 class OGRCSVLayer : public OGRLayer
 {
+  public:
+
+    enum class StringQuoting
+    {
+        IF_NEEDED,
+        IF_AMBIGUOUS,
+        ALWAYS
+    };
+
+  private:
     OGRFeatureDefn     *poFeatureDefn;
 
     VSILFILE           *fpCSV;
@@ -127,12 +137,15 @@ class OGRCSVLayer : public OGRLayer
 
     bool                bEmptyStringNull;
 
+    StringQuoting       m_eStringQuoting = StringQuoting::IF_AMBIGUOUS;
+
     char              **GetNextLineTokens();
 
     static bool         Matches( const char *pszFieldName,
                                  char **papszPossibleNames );
 
   public:
+
     OGRCSVLayer( const char *pszName, VSILFILE *fp, const char *pszFilename,
                  int bNew, int bInWriteMode, char chDelimiter );
     virtual ~OGRCSVLayer() GDAL_OVERRIDE;
@@ -150,9 +163,9 @@ class OGRCSVLayer : public OGRLayer
     const CPLString    &GetZField() const { return osZField; }
 
     void                BuildFeatureDefn(
-                            const char *pszNfdcGeomField = NULL,
-                            const char *pszGeonamesGeomFieldPrefix = NULL,
-                            char **papszOpenOptions = NULL );
+                            const char *pszNfdcGeomField = nullptr,
+                            const char *pszGeonamesGeomFieldPrefix = nullptr,
+                            char **papszOpenOptions = nullptr );
 
     void                ResetReading() override;
     OGRFeature         *GetNextFeature() override;
@@ -177,9 +190,12 @@ class OGRCSVLayer : public OGRLayer
     void                SetCRLF( bool bNewValue );
     void                SetWriteGeometry(OGRwkbGeometryType eGType,
                                          OGRCSVGeometryFormat eGeometryFormat,
-                                         const char *pszGeomCol = NULL);
+                                         const char *pszGeomCol = nullptr);
     void                SetCreateCSVT( bool bCreateCSVT );
     void                SetWriteBOM( bool bWriteBOM );
+
+    void                SetStringQuoting( StringQuoting eVal ) { m_eStringQuoting = eVal; }
+    StringQuoting       GetStringQuoting() const { return m_eStringQuoting; }
 
     virtual GIntBig     GetFeatureCount( int bForce = TRUE ) override;
     virtual OGRErr      SyncToDisk() override;
@@ -210,12 +226,12 @@ class OGRCSVDataSource : public OGRDataSource
 
     int                 Open( const char *pszFilename,
                               int bUpdate, int bForceAccept,
-                              char **papszOpenOptions = NULL );
+                              char **papszOpenOptions = nullptr );
     bool                OpenTable(
                             const char *pszFilename,
                             char **papszOpenOptions,
-                            const char *pszNfdcRunwaysGeomField = NULL,
-                            const char *pszGeonamesGeomFieldPrefix = NULL );
+                            const char *pszNfdcRunwaysGeomField = nullptr,
+                            const char *pszGeonamesGeomFieldPrefix = nullptr );
 
     const char          *GetName() override { return pszName; }
 
@@ -223,9 +239,9 @@ class OGRCSVDataSource : public OGRDataSource
     OGRLayer            *GetLayer( int ) override;
 
     virtual OGRLayer   *ICreateLayer( const char *pszName,
-                                     OGRSpatialReference *poSpatialRef = NULL,
+                                     OGRSpatialReference *poSpatialRef = nullptr,
                                      OGRwkbGeometryType eGType = wkbUnknown,
-                                     char ** papszOptions = NULL ) override;
+                                     char ** papszOptions = nullptr ) override;
 
     virtual OGRErr      DeleteLayer(int) override;
 

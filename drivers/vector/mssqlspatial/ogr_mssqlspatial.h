@@ -107,7 +107,7 @@ public:
     int             ValidateGeometry(OGRGeometry* poGeom);
 
     OGRGeometry*    GetValidGeometryRef();
-    int             IsValid() { return bIsValid; };
+    int             IsValid() { return bIsValid; }
 };
 
 /************************************************************************/
@@ -147,7 +147,7 @@ public:
     explicit            OGRMSSQLGeometryParser( int nGeomColumnType );
     OGRErr              ParseSqlGeometry(unsigned char* pszInput, int nLen,
                                                         OGRGeometry **poGeom);
-    int                 GetSRSId() { return nSRSId; };
+    int                 GetSRSId() { return nSRSId; }
 };
 
 /************************************************************************/
@@ -281,18 +281,18 @@ typedef union {
     } Float;
 
     struct {
-        int     nSize;
+        SQLLEN  nSize;
         char* pData[8000];
     } VarChar;
 
     struct {
-        int     nSize;
+        SQLLEN  nSize;
         GByte*  pData;
     } RawData;
 
 } BCPData;
 
-class OGRMSSQLSpatialTableLayer : public OGRMSSQLSpatialLayer
+class OGRMSSQLSpatialTableLayer final: public OGRMSSQLSpatialLayer
 {
     int                 bUpdateAccess;
     int                 bLaunderColumnNames;
@@ -378,6 +378,12 @@ class OGRMSSQLSpatialTableLayer : public OGRMSSQLSpatialLayer
     int                 FetchSRSId();
 
     void                SetUseCopy(int bcpSize) { bUseCopy = TRUE; nBCPSize = bcpSize; }
+
+    // cppcheck-suppress functionStatic
+    OGRErr              StartCopy();
+    // cppcheck-suppress functionStatic
+    OGRErr              EndCopy();
+
     int                 Failed( int nRetCode );
 #ifdef MSSQL_BCP_SUPPORTED
     OGRErr              CreateFeatureBCP( OGRFeature *poFeature );
@@ -391,7 +397,7 @@ class OGRMSSQLSpatialTableLayer : public OGRMSSQLSpatialLayer
 /*                      OGRMSSQLSpatialSelectLayer                      */
 /************************************************************************/
 
-class OGRMSSQLSpatialSelectLayer : public OGRMSSQLSpatialLayer
+class OGRMSSQLSpatialSelectLayer final: public OGRMSSQLSpatialLayer
 {
     char                *pszBaseStatement;
 
@@ -421,7 +427,7 @@ class OGRMSSQLSpatialSelectLayer : public OGRMSSQLSpatialLayer
 /*                           OGRODBCDataSource                          */
 /************************************************************************/
 
-class OGRMSSQLSpatialDataSource : public OGRDataSource
+class OGRMSSQLSpatialDataSource final: public OGRDataSource
 {
     OGRMSSQLSpatialTableLayer    **papoLayers;
     int                 nLayers;
@@ -447,6 +453,8 @@ class OGRMSSQLSpatialDataSource : public OGRDataSource
     int                 nKnownSRID;
     int                *panSRID;
     OGRSpatialReference **papoSRS;
+
+    OGRMSSQLSpatialTableLayer *poLayerInCopyMode;
 
     char                *pszConnection;
 
@@ -475,9 +483,9 @@ class OGRMSSQLSpatialDataSource : public OGRDataSource
 
     virtual OGRErr       DeleteLayer( int iLayer ) override;
     virtual OGRLayer    *ICreateLayer( const char *,
-                                      OGRSpatialReference * = NULL,
+                                      OGRSpatialReference * = nullptr,
                                       OGRwkbGeometryType = wkbUnknown,
-                                      char ** = NULL ) override;
+                                      char ** = nullptr ) override;
 
     int                 TestCapability( const char * ) override;
 
@@ -499,6 +507,9 @@ class OGRMSSQLSpatialDataSource : public OGRDataSource
     // Internal use
     CPLODBCSession     *GetSession() { return &oSession; }
     const char         *GetConnectionString() { return pszConnection; }
+
+    void                StartCopy(OGRMSSQLSpatialTableLayer *poMSSQLSpatialLayer);
+    OGRErr              EndCopy();
 };
 
 /************************************************************************/
@@ -514,7 +525,7 @@ class OGRMSSQLSpatialDriver : public OGRSFDriver
     OGRDataSource *Open( const char *, int ) override;
 
     virtual OGRDataSource *CreateDataSource( const char *pszName,
-                                             char ** = NULL ) override;
+                                             char ** = nullptr ) override;
 
     int                 TestCapability( const char * ) override;
 };

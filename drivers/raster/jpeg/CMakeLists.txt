@@ -3,7 +3,7 @@
 # Purpose:  CMake build scripts
 # Author:   Mikhail Gusev, gusevmihs@gmail.com
 ################################################################################
-# Copyright (C) 2015-2017, NextGIS <info@nextgis.com>
+# Copyright (C) 2015-2016, NextGIS <info@nextgis.com>
 # Copyright (C) 2016 Mikhail Gusev
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
@@ -59,10 +59,7 @@ if(ENABLE_JPEG)
     )
 
     add_library(${TARGET_NAME} OBJECT ${LIB_HHEADERS} ${LIB_HHEADERS_PRIV} ${LIB_CSOURCES})
-    if(DEPENDENCY_LIB)
-        add_dependencies(${TARGET_NAME} ${DEPENDENCY_LIB})
-    endif()
-    
+
     # build target
     set(TARGET_OBJECTS ${TARGET_OBJECTS} $<TARGET_OBJECTS:${TARGET_NAME}> PARENT_SCOPE)
 else()

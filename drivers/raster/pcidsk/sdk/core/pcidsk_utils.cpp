@@ -24,6 +24,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  ****************************************************************************/
+
 #include "pcidsk_config.h"
 #include "pcidsk_types.h"
 #include "pcidsk_exception.h"
@@ -35,13 +36,14 @@
 #include <cctype>
 #include <cstdio>
 #include <cmath>
+#include <cstdarg>
 #include <iostream>
 
-using namespace PCIDSK;
-
-#if defined(_MSC_VER) && (_MSC_VER < 1500)
-#  define vsnprintf _vsnprintf
+#if !defined(va_copy) && defined(__va_copy)
+#define va_copy __va_copy
 #endif
+
+using namespace PCIDSK;
 
 /************************************************************************/
 /*                         GetCurrentDateTime()                         */
@@ -567,7 +569,7 @@ void PCIDSK::DefaultDebug( const char * message )
 
     if( !initialized )
     {
-        if( getenv( "PCIDSK_DEBUG" ) != NULL )
+        if( getenv( "PCIDSK_DEBUG" ) != nullptr )
             enabled = true;
 
         initialized = true;
@@ -645,7 +647,7 @@ static void vDebug( void (*pfnDebug)(const char *),
 #else
             wrk_args = args;
 #endif
-            if( pszWorkBufferNew == NULL )
+            if( pszWorkBufferNew == nullptr )
             {
                 strcpy( pszWorkBuffer, "(message too large)" );
                 break;
@@ -679,7 +681,7 @@ static void vDebug( void (*pfnDebug)(const char *),
 void PCIDSK::Debug( void (*pfnDebug)(const char *), const char *fmt, ... )
 
 {
-    if( pfnDebug == NULL )
+    if( pfnDebug == nullptr )
         return;
 
     std::va_list args;

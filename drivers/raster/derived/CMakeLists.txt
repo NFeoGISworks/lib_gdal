@@ -41,7 +41,7 @@ set(LIB_HHEADERS_PRIV
 )
 
 set(LIB_CSOURCES
-    deriveddataset.cpp      
+    deriveddataset.cpp
     derivedlist.c
 )
 
@@ -53,4 +53,4 @@ set(TARGET_OBJECTS ${TARGET_OBJECTS} $<TARGET_OBJECTS:${TARGET_NAME}> PARENT_SCO
 # install headers
 if(NOT SKIP_INSTALL_HEADERS AND NOT SKIP_INSTALL_ALL )
     install(FILES ${LIB_HHEADERS} DESTINATION ${INSTALL_INC_DIR} COMPONENT headers)
-endif() 
+endif()

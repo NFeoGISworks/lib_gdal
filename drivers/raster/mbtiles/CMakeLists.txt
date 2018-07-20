@@ -34,17 +34,11 @@ if(ENABLE_MBTILES)
     set(FORMAT_DEFINITIONS ${FORMAT_DEFINITIONS} "-DFRMT_mbtiles" PARENT_SCOPE)
 
     include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-    #include_directories(${JSONC_INCLUDE_DIR})
     include_directories(${CMAKE_SOURCE_DIR}/core/ogr)
     include_directories(${CMAKE_SOURCE_DIR}/drivers/common/gpkg)
     include_directories(${CMAKE_SOURCE_DIR}/drivers/vector/sqlite)
     include_directories(${CMAKE_SOURCE_DIR}/drivers/vector/geojson)
-    include_directories(${SQLITE3_INCLUDE_DIRS})
-
-    # NOTE: we do not use internal z lib, as it is external always.
-    if(ZLIB_FOUND)
-        include_directories(${ZLIB_INCLUDE_DIRS})
-    endif()
+    include_directories(${CMAKE_SOURCE_DIR}/drivers/vector/mvt)
 
     # TODO: do we need JPEG and PNG drivers as its written in
     # http://www.gdal.org/frmt_mbtiles.html ?
@@ -61,10 +55,7 @@ if(ENABLE_MBTILES)
     )
 
     add_library(${TARGET_NAME} OBJECT ${LIB_HHEADERS} ${LIB_HHEADERS_PRIV} ${LIB_CSOURCES})
-    if(DEPENDENCY_LIB)
-        add_dependencies(${TARGET_NAME} ${DEPENDENCY_LIB})
-    endif()
-    
+
     # build target
     set(TARGET_OBJECTS ${TARGET_OBJECTS} $<TARGET_OBJECTS:${TARGET_NAME}> PARENT_SCOPE)
 else()

@@ -40,7 +40,7 @@
 #include "ogr_geometry.h"
 #include "ogr_p.h"
 
-CPL_CVSID("$Id$");
+CPL_CVSID("$Id$")
 
 static inline double dist(double x0, double y0, double x1, double y1)
 {
@@ -186,7 +186,7 @@ OGRErr OGRCircularString::exportToWkb( OGRwkbByteOrder eByteOrder,
 /*      `CIRCULARSTRING [Z] ( x y [z], x y [z], ...)',                  */
 /************************************************************************/
 
-OGRErr OGRCircularString::importFromWkt( char ** ppszInput )
+OGRErr OGRCircularString::importFromWkt( const char ** ppszInput )
 
 {
     const OGRErr eErr = OGRSimpleCurve::importFromWkt(ppszInput);
@@ -270,7 +270,7 @@ void OGRCircularString::ExtendEnvelopeWithCircular(
     // extremities of the circle.
     for( int i = 0; i < nPointCount - 2; i += 2 )
     {
-        double x0 = paoPoints[i].x;
+        const double x0 = paoPoints[i].x;
         const double y0 = paoPoints[i].y;
         const double x1 = paoPoints[i+1].x;
         const double y1 = paoPoints[i+1].y;
@@ -286,6 +286,11 @@ void OGRCircularString::ExtendEnvelopeWithCircular(
                                                   R, cx, cy,
                                                   alpha0, alpha1, alpha2))
         {
+            if( CPLIsNan(alpha0) || CPLIsNan(alpha2) ) {
+                CPLError(CE_Failure, CPLE_AppDefined,
+                         "GetCurveParmeters returned NaN");
+                continue;
+            }
             int quadrantStart =
                 static_cast<int>(std::floor(alpha0 / (M_PI / 2)));
             int quadrantEnd = static_cast<int>(std::floor(alpha2 / (M_PI / 2)));
@@ -395,10 +400,18 @@ void OGRCircularString::segmentize( double dfMaxLength )
             if( dfSegmentLength1 > dfMaxLength ||
                 dfSegmentLength2 > dfMaxLength )
             {
-                const int nIntermediatePoints =
-                    1 +
-                    2 * static_cast<int>(std::floor(dfSegmentLength1
-                                                    / dfMaxLength / 2.0));
+                const double dfVal =
+                    1 + 2 * std::floor(dfSegmentLength1 / dfMaxLength / 2.0);
+                if ( dfVal >= std::numeric_limits<int>::max() ||
+                     dfVal < 0.0 ||
+                     CPLIsNan(dfVal) )
+                {
+                    CPLError(
+                        CE_Failure, CPLE_AppDefined,
+                        "segmentize nIntermediatePoints invalid: %lf", dfVal);
+                    break;
+                }
+                const int nIntermediatePoints = static_cast<int>(dfVal);
                 const double dfStep =
                     (alpha1 - alpha0) / (nIntermediatePoints + 1);
                 for( int j = 1; j <= nIntermediatePoints; ++j )
@@ -424,10 +437,18 @@ void OGRCircularString::segmentize( double dfMaxLength )
             if( dfSegmentLength1 > dfMaxLength ||
                 dfSegmentLength2 > dfMaxLength )
             {
-                int nIntermediatePoints =
-                    1 +
-                    2 * static_cast<int>(std::floor(dfSegmentLength2
-                                                    / dfMaxLength / 2.0));
+                const double dfVal =
+                    1 + 2 * std::floor(dfSegmentLength2 / dfMaxLength / 2.0);
+                if ( dfVal >= std::numeric_limits<int>::max() ||
+                     dfVal < 0.0 ||
+                     CPLIsNan(dfVal) )
+                {
+                    CPLError(
+                        CE_Failure, CPLE_AppDefined,
+                        "segmentize nIntermediatePoints invalid 2: %lf", dfVal);
+                    break;
+                }
+                int nIntermediatePoints = static_cast<int>(dfVal);
                 const double dfStep =
                     (alpha2 - alpha1) / (nIntermediatePoints + 1);
                 for( int j = 1; j <= nIntermediatePoints; ++j )
@@ -455,9 +476,18 @@ void OGRCircularString::segmentize( double dfMaxLength )
             if( dfSegmentLength1 > dfMaxLength ||
                 dfSegmentLength2 > dfMaxLength )
             {
-                int nIntermediatePoints =
-                    1 + 2 * static_cast<int>(ceil(dfSegmentLength1 /
-                                                  dfMaxLength / 2.0));
+                const double dfVal =
+                    1 + 2 * std::ceil(dfSegmentLength1 / dfMaxLength / 2.0);
+                if ( dfVal >= std::numeric_limits<int>::max() ||
+                     dfVal < 0.0 ||
+                     CPLIsNan(dfVal) )
+                {
+                    CPLError(
+                        CE_Failure, CPLE_AppDefined,
+                        "segmentize nIntermediatePoints invalid 2: %lf", dfVal);
+                    break;
+                }
+                int nIntermediatePoints = static_cast<int>(dfVal);
                 for( int j = 1; j <= nIntermediatePoints; ++j )
                 {
                     aoRawPoint.push_back(OGRRawPoint(
@@ -476,9 +506,19 @@ void OGRCircularString::segmentize( double dfMaxLength )
             if( dfSegmentLength1 > dfMaxLength ||
                 dfSegmentLength2 > dfMaxLength )
             {
-                const int nIntermediatePoints =
-                    1 + 2 * static_cast<int>(ceil(dfSegmentLength2 /
-                                                  dfMaxLength / 2.0));
+                const double dfVal =
+                    1 + 2 * std::ceil(dfSegmentLength2 / dfMaxLength / 2.0);
+                if ( dfVal >= std::numeric_limits<int>::max() ||
+                     dfVal < 0.0 ||
+                     CPLIsNan(dfVal) )
+                {
+                    CPLError(
+                        CE_Failure, CPLE_AppDefined,
+                        "segmentize nIntermediatePoints invalid 3: %lf", dfVal);
+                     break;
+                }
+                const int nIntermediatePoints = static_cast<int>(dfVal);
+
                 for( int j = 1; j <= nIntermediatePoints; ++j )
                 {
                     aoRawPoint.push_back(OGRRawPoint(
@@ -701,7 +741,7 @@ static OGRLineString* CasterToLineString(OGRCurve* poGeom)
     CPLError(CE_Failure, CPLE_AppDefined,
              "%s found. Conversion impossible", poGeom->getGeometryName());
     delete poGeom;
-    return NULL;
+    return nullptr;
 }
 
 OGRCurveCasterToLineString OGRCircularString::GetCasterToLineString() const {
@@ -717,7 +757,7 @@ static OGRLinearRing* CasterToLinearRing(OGRCurve* poGeom)
     CPLError(CE_Failure, CPLE_AppDefined,
              "%s found. Conversion impossible", poGeom->getGeometryName());
     delete poGeom;
-    return NULL;
+    return nullptr;
 }
 
 OGRCurveCasterToLinearRing OGRCircularString::GetCasterToLinearRing() const {
@@ -857,12 +897,32 @@ double OGRCircularString::get_Area() const
     return dfArea;
 }
 
+//! @cond Doxygen_Suppress
+
 /************************************************************************/
 /*                           ContainsPoint()                            */
 /************************************************************************/
 
-//! @cond Doxygen_Suppress
 int OGRCircularString::ContainsPoint( const OGRPoint* p ) const
+{
+    double cx = 0.0;
+    double cy = 0.0;
+    double square_R = 0.0;
+    if( IsFullCircle(cx, cy, square_R) )
+    {
+        const double square_dist =
+            (p->getX() - cx) * (p->getX() - cx) +
+            (p->getY() - cy) * (p->getY() - cy);
+        return square_dist < square_R;
+    }
+    return -1;
+}
+
+/************************************************************************/
+/*                       IntersectsPoint()                              */
+/************************************************************************/
+
+int OGRCircularString::IntersectsPoint( const OGRPoint* p ) const
 {
     double cx = 0.0;
     double cy = 0.0;
@@ -876,4 +936,5 @@ int OGRCircularString::ContainsPoint( const OGRPoint* p ) const
     }
     return -1;
 }
+
 //! @endcond

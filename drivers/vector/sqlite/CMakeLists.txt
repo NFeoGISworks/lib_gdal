@@ -28,12 +28,7 @@
 if(ENABLE_SQLITE_GPKG)
     set(TARGET_NAME vec_sqlite)
 
-    find_anyproject(Spatialite DEFAULT ON)
     if(SPATIALITE_FOUND)
-        add_definitions(-DHAVE_SPATIALITE)
-        # We sure that spatialite is 4.3 or higher
-        add_definitions(-DSPATIALITE_412_OR_LATER)
-
         include_directories(${SPATIALITE_INCLUDE_DIRS})
     endif()
 
@@ -85,12 +80,11 @@ if(ENABLE_SQLITE_GPKG)
     )
 
     add_library(${TARGET_NAME} OBJECT ${LIB_HHEADERS} ${LIB_HHEADERS_PRIV} ${LIB_CSOURCES})
-    if(DEPENDENCY_LIB)
-        add_dependencies(${TARGET_NAME} ${DEPENDENCY_LIB})
-    endif()
 
     # build target
     set(TARGET_OBJECTS ${TARGET_OBJECTS} $<TARGET_OBJECTS:${TARGET_NAME}> PARENT_SCOPE)
+    set(TARGET_LINK_LIB ${TARGET_LINK_LIB} PARENT_SCOPE)
+    set(DEPENDENCY_LIB ${DEPENDENCY_LIB} PARENT_SCOPE)
     if(NOT SPATIALITE_FOUND)
         warning_msg("Skip spatialite in sqlite")
     endif()

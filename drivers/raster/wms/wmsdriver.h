@@ -9,6 +9,7 @@
  ******************************************************************************
  * Copyright (c) 2007, Adam Nowacki
  * Copyright (c) 2008-2013, Even Rouault <even dot rouault at mines-paris dot org>
+ * Copyright (c) 2017, Dmitry Baryshnikov, <polimax@mail.ru>
  * Copyright (c) 2017, NextGIS, <info@nextgis.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -154,7 +155,7 @@ public:
 class WMSMiniDriver {
 friend class GDALWMSDataset;
 public:
-    WMSMiniDriver() : m_parent_dataset(NULL) {}
+    WMSMiniDriver() : m_parent_dataset(nullptr) {}
     virtual ~WMSMiniDriver() {}
 
 public:
@@ -185,11 +186,11 @@ public:
     virtual const char *GetProjectionInWKT() {
         if (!m_projection_wkt.empty())
             return m_projection_wkt.c_str();
-        return NULL;
+        return nullptr;
     }
 
     virtual char **GetMetadataDomainList() {
-        return NULL;
+        return nullptr;
     }
 
 protected:
@@ -228,7 +229,7 @@ enum GDALWMSCacheItemStatus {
 class GDALWMSCacheImpl
 {
 public:
-    GDALWMSCacheImpl(const CPLString& soPath, CPLXMLNode */*pConfig*/) :
+    GDALWMSCacheImpl(const CPLString& soPath, CPLXMLNode * /*pConfig*/) :
         m_soPath(soPath) {}
     virtual ~GDALWMSCacheImpl() {}
     virtual CPLErr Insert(const char *pszKey, const CPLString &osFileName) = 0;
@@ -255,15 +256,16 @@ public:
     void Clean();
 
 protected:
-//    CPLString KeyToCacheFile(const char *pszKey);
     CPLString CachePath() const { return m_osCachePath; }
 
 protected:
     CPLString m_osCachePath;
-    CPLJoinableThread *m_hCleanThread;
+    bool m_bIsCleanThreadRunning;
+    time_t m_nCleanThreadLastRunTime;
 
 private:
     GDALWMSCacheImpl* m_poCache;
+    CPLJoinableThread* m_hThread;
 };
 
 /************************************************************************/
@@ -352,12 +354,12 @@ public:
     }
 
     static void list2vec(std::vector<double> &v,const char *pszList) {
-        if ((pszList==NULL)||(pszList[0]==0)) return;
+        if ((pszList==nullptr)||(pszList[0]==0)) return;
         char **papszTokens=CSLTokenizeString2(pszList," \t\n\r",
                                               CSLT_STRIPLEADSPACES|CSLT_STRIPENDSPACES);
         v.clear();
         for (int i=0;i<CSLCount(papszTokens);i++)
-            v.push_back(CPLStrtod(papszTokens[i],NULL));
+            v.push_back(CPLStrtod(papszTokens[i],nullptr));
         CSLDestroy(papszTokens);
     }
 
@@ -504,6 +506,10 @@ protected:
     std::vector<GDALWMSRasterBand *> m_overviews;
     int m_overview;
     GDALColorInterp m_color_interp;
+    int m_nAdviseReadBX0;
+    int m_nAdviseReadBY0;
+    int m_nAdviseReadBX1;
+    int m_nAdviseReadBY1;
 };
 
 #endif /* notdef WMSDRIVER_H_INCLUDED */

@@ -31,7 +31,7 @@
 
 #include "rmfdataset.h"
 
-CPL_CVSID("$Id$");
+CPL_CVSID("$Id$")
 
 /*
  * The encoded data stream is a series of records.
@@ -109,8 +109,8 @@ static GInt32 AddInt32( GInt32& nTarget, GInt32 nVal )
 int RMFDataset::DEMDecompress( const GByte* pabyIn, GUInt32 nSizeIn,
                                GByte* pabyOut, GUInt32 nSizeOut )
 {
-    if( pabyIn == NULL ||
-        pabyOut == NULL ||
+    if( pabyIn == nullptr ||
+        pabyOut == nullptr ||
         nSizeOut < nSizeIn ||
         nSizeIn < 2 )
         return 0;

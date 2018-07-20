@@ -3133,9 +3133,10 @@ namespace swig {
 #include <iostream>
 using namespace std;
 
+#define CPL_SUPRESS_CPLUSPLUS
+
 #include "gdal.h"
 #include "ogr_api.h"
-#include "ogr_p.h"
 #include "ogr_core.h"
 #include "cpl_port.h"
 #include "cpl_string.h"
@@ -3202,8 +3203,12 @@ PythonBindingErrorHandler(CPLErr eclass, int code, const char *msg )
   ** We do not want to interfere with warnings or debug messages since
   ** they won't be translated into exceptions.
   */
-  if (eclass == CE_Warning || eclass == CE_Debug ) {
+  else if (eclass == CE_Warning || eclass == CE_Debug ) {
     pfnPreviousHandler(eclass, code, msg );
+  }
+  else {
+    CPLSetThreadLocalConfigOption("__last_error_message", msg);
+    CPLSetThreadLocalConfigOption("__last_error_code", CPLSPrintf("%d", code));
   }
 }
 
@@ -3279,10 +3284,34 @@ template<class T> static T ReturnSame(T x)
     return 0;
 }
 
+static void ClearErrorState()
+{
+    CPLSetThreadLocalConfigOption("__last_error_message", NULL);
+    CPLSetThreadLocalConfigOption("__last_error_code", NULL);
+    CPLErrorReset();
+}
+
+static void StoreLastException() CPL_UNUSED;
+
+static void StoreLastException()
+{
+    const char* pszLastErrorMessage =
+        CPLGetThreadLocalConfigOption("__last_error_message", NULL);
+    const char* pszLastErrorCode =
+        CPLGetThreadLocalConfigOption("__last_error_code", NULL);
+    if( pszLastErrorMessage != NULL && pszLastErrorCode != NULL )
+    {
+        CPLErrorSetState( CE_Failure,
+            static_cast<CPLErrorNum>(atoi(pszLastErrorCode)),
+            pszLastErrorMessage);
+    }
+}
+
 
 
 
 /* Return a PyObject* from a NULL terminated C String */
+static PyObject* GDALPythonObjectFromCStr(const char *pszStr) CPL_UNUSED;
 static PyObject* GDALPythonObjectFromCStr(const char *pszStr)
 {
   const unsigned char* pszIter = (const unsigned char*) pszStr;
@@ -3310,6 +3339,7 @@ static PyObject* GDALPythonObjectFromCStr(const char *pszStr)
 
 /* Return a NULL terminated c String from a PyObject */
 /* Result must be freed with GDALPythonFreeCStr */
+static char* GDALPythonObjectToCStr(PyObject* pyObject, int* pbToFree) CPL_UNUSED;
 static char* GDALPythonObjectToCStr(PyObject* pyObject, int* pbToFree)
 {
   *pbToFree = 0;
@@ -3319,6 +3349,8 @@ static char* GDALPythonObjectToCStr(PyObject* pyObject, int* pbToFree)
       char *pszNewStr;
       Py_ssize_t nLen;
       PyObject* pyUTF8Str = PyUnicode_AsUTF8String(pyObject);
+      if( pyUTF8Str == NULL )
+        return NULL;
 #if PY_VERSION_HEX >= 0x03000000
       PyBytes_AsStringAndSize(pyUTF8Str, &pszStr, &nLen);
 #else
@@ -3340,6 +3372,7 @@ static char* GDALPythonObjectToCStr(PyObject* pyObject, int* pbToFree)
   }
 }
 
+static void GDALPythonFreeCStr(void* ptr, int bToFree) CPL_UNUSED;
 static void GDALPythonFreeCStr(void* ptr, int bToFree)
 {
    if (bToFree)
@@ -3358,6 +3391,10 @@ typedef struct {
 /************************************************************************/
 /*                          PyProgressProxy()                           */
 /************************************************************************/
+
+
+static int CPL_STDCALL
+PyProgressProxy( double dfComplete, const char *pszMessage, void *pData ) CPL_UNUSED;
 
 static int CPL_STDCALL
 PyProgressProxy( double dfComplete, const char *pszMessage, void *pData )
@@ -3391,6 +3428,7 @@ PyProgressProxy( double dfComplete, const char *pszMessage, void *pData )
 
     if( PyErr_Occurred() != NULL )
     {
+        PyErr_Print();
         PyErr_Clear();
         SWIG_PYTHON_THREAD_END_BLOCK;
         return FALSE;
@@ -3428,12 +3466,12 @@ PyProgressProxy( double dfComplete, const char *pszMessage, void *pData )
 
 
   GNMNetworkShadow* CastToNetwork(GDALMajorObjectShadow* base) {
-      return (GNMNetworkShadow*)dynamic_cast<GNMNetwork*>((GDALMajorObject*)base);
+      return (GNMNetworkShadow*)GNMCastToNetwork((GDALMajorObjectH)base);
   }
 
 
   GNMGenericNetworkShadow* CastToGenericNetwork(GDALMajorObjectShadow* base) {
-      return (GNMGenericNetworkShadow*)dynamic_cast<GNMGenericNetwork*>((GDALMajorObject*)base);
+      return (GNMGenericNetworkShadow*)GNMCastToGenericNetwork((GDALMajorObjectH)base);
   }
 
 SWIGINTERN void delete_GNMNetworkShadow(GNMNetworkShadow *self){
@@ -3683,7 +3721,7 @@ SWIG_AsCharPtrAndSize(PyObject *obj, char** cptr, size_t* psize, int *alloc)
            TODO(bhy) More detailed explanation */
         return SWIG_RuntimeError;
     }
-    obj = PyUnicode_AsUTF8String(obj);
+    obj = PyUnicode_AsUTF8String(obj); if (!obj) return SWIG_TypeError;
     PyBytes_AsStringAndSize(obj, &cstr, &len);
     if(alloc) *alloc = SWIG_NEWOBJ;
 #else
@@ -3732,7 +3770,7 @@ SWIG_AsCharPtrAndSize(PyObject *obj, char** cptr, size_t* psize, int *alloc)
       if (!alloc && cptr) {
         return SWIG_RuntimeError;
       }
-      obj = PyUnicode_AsUTF8String(obj);
+      obj = PyUnicode_AsUTF8String(obj); if (!obj) return SWIG_TypeError;
       if (PyString_AsStringAndSize(obj, &cstr, &len) != -1) {
         if (cptr) {
           if (alloc) *alloc = SWIG_NEWOBJ;
@@ -4039,7 +4077,7 @@ SWIGINTERN PyObject *_wrap_CastToNetwork(PyObject *SWIGUNUSEDPARM(self), PyObjec
   arg1 = reinterpret_cast< GDALMajorObjectShadow * >(argp1);
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -4079,7 +4117,7 @@ SWIGINTERN PyObject *_wrap_CastToGenericNetwork(PyObject *SWIGUNUSEDPARM(self), 
   arg1 = reinterpret_cast< GDALMajorObjectShadow * >(argp1);
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -4118,7 +4156,7 @@ SWIGINTERN PyObject *_wrap_delete_Network(PyObject *SWIGUNUSEDPARM(self), PyObje
   arg1 = reinterpret_cast< GNMNetworkShadow * >(argp1);
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -4164,7 +4202,7 @@ SWIGINTERN PyObject *_wrap_Network_ReleaseResultSet(PyObject *SWIGUNUSEDPARM(sel
   }
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -4204,7 +4242,7 @@ SWIGINTERN PyObject *_wrap_Network_GetVersion(PyObject *SWIGUNUSEDPARM(self), Py
   arg1 = reinterpret_cast< GNMNetworkShadow * >(argp1);
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -4244,7 +4282,7 @@ SWIGINTERN PyObject *_wrap_Network_GetName(PyObject *SWIGUNUSEDPARM(self), PyObj
   arg1 = reinterpret_cast< GNMNetworkShadow * >(argp1);
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -4294,7 +4332,7 @@ SWIGINTERN PyObject *_wrap_Network_GetFeatureByGlobalFID(PyObject *SWIGUNUSEDPAR
   }
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -4391,6 +4429,12 @@ SWIGINTERN PyObject *_wrap_Network_GetPath(PyObject *SWIGUNUSEDPARM(self), PyObj
           char *pszStr;
           Py_ssize_t nLen;
           PyObject* pyUTF8Str = PyUnicode_AsUTF8String(pyObj);
+          if( !pyUTF8Str )
+          {
+            Py_DECREF(pyObj);
+            PyErr_SetString(PyExc_TypeError,"invalid Unicode sequence");
+            SWIG_fail;
+          }
 #if PY_VERSION_HEX >= 0x03000000
           PyBytes_AsStringAndSize(pyUTF8Str, &pszStr, &nLen);
 #else
@@ -4418,7 +4462,7 @@ SWIGINTERN PyObject *_wrap_Network_GetPath(PyObject *SWIGUNUSEDPARM(self), PyObj
   }
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -4466,7 +4510,7 @@ SWIGINTERN PyObject *_wrap_Network_DisconnectAll(PyObject *SWIGUNUSEDPARM(self),
   arg1 = reinterpret_cast< GNMNetworkShadow * >(argp1);
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -4506,7 +4550,7 @@ SWIGINTERN PyObject *_wrap_Network_GetProjection(PyObject *SWIGUNUSEDPARM(self),
   arg1 = reinterpret_cast< GNMNetworkShadow * >(argp1);
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -4546,7 +4590,7 @@ SWIGINTERN PyObject *_wrap_Network_GetProjectionRef(PyObject *SWIGUNUSEDPARM(sel
   arg1 = reinterpret_cast< GNMNetworkShadow * >(argp1);
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -4586,7 +4630,7 @@ SWIGINTERN PyObject *_wrap_Network_GetFileList(PyObject *SWIGUNUSEDPARM(self), P
   arg1 = reinterpret_cast< GNMNetworkShadow * >(argp1);
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -4702,6 +4746,12 @@ SWIGINTERN PyObject *_wrap_Network_CreateLayer(PyObject *SWIGUNUSEDPARM(self), P
           char *pszStr;
           Py_ssize_t nLen;
           PyObject* pyUTF8Str = PyUnicode_AsUTF8String(pyObj);
+          if( !pyUTF8Str )
+          {
+            Py_DECREF(pyObj);
+            PyErr_SetString(PyExc_TypeError,"invalid Unicode sequence");
+            SWIG_fail;
+          }
 #if PY_VERSION_HEX >= 0x03000000
           PyBytes_AsStringAndSize(pyUTF8Str, &pszStr, &nLen);
 #else
@@ -4734,7 +4784,7 @@ SWIGINTERN PyObject *_wrap_Network_CreateLayer(PyObject *SWIGUNUSEDPARM(self), P
   }
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -4831,6 +4881,12 @@ SWIGINTERN PyObject *_wrap_Network_CopyLayer(PyObject *SWIGUNUSEDPARM(self), PyO
           char *pszStr;
           Py_ssize_t nLen;
           PyObject* pyUTF8Str = PyUnicode_AsUTF8String(pyObj);
+          if( !pyUTF8Str )
+          {
+            Py_DECREF(pyObj);
+            PyErr_SetString(PyExc_TypeError,"invalid Unicode sequence");
+            SWIG_fail;
+          }
 #if PY_VERSION_HEX >= 0x03000000
           PyBytes_AsStringAndSize(pyUTF8Str, &pszStr, &nLen);
 #else
@@ -4863,7 +4919,7 @@ SWIGINTERN PyObject *_wrap_Network_CopyLayer(PyObject *SWIGUNUSEDPARM(self), PyO
   }
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -4922,7 +4978,7 @@ SWIGINTERN PyObject *_wrap_Network_DeleteLayer(PyObject *SWIGUNUSEDPARM(self), P
   arg2 = static_cast< int >(val2);
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -4978,7 +5034,7 @@ SWIGINTERN PyObject *_wrap_Network_GetLayerCount(PyObject *SWIGUNUSEDPARM(self),
   arg1 = reinterpret_cast< GNMNetworkShadow * >(argp1);
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -5029,7 +5085,7 @@ SWIGINTERN PyObject *_wrap_Network_GetLayerByIndex(PyObject *SWIGUNUSEDPARM(self
   }
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -5079,7 +5135,7 @@ SWIGINTERN PyObject *_wrap_Network_GetLayerByName(PyObject *SWIGUNUSEDPARM(self)
   arg2 = reinterpret_cast< char * >(buf2);
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -5136,7 +5192,7 @@ SWIGINTERN PyObject *_wrap_Network_TestCapability(PyObject *SWIGUNUSEDPARM(self)
   }
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -5192,7 +5248,7 @@ SWIGINTERN PyObject *_wrap_Network_StartTransaction(PyObject *SWIGUNUSEDPARM(sel
   }
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -5248,7 +5304,7 @@ SWIGINTERN PyObject *_wrap_Network_CommitTransaction(PyObject *SWIGUNUSEDPARM(se
   arg1 = reinterpret_cast< GNMNetworkShadow * >(argp1);
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -5304,7 +5360,7 @@ SWIGINTERN PyObject *_wrap_Network_RollbackTransaction(PyObject *SWIGUNUSEDPARM(
   arg1 = reinterpret_cast< GNMNetworkShadow * >(argp1);
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -5366,7 +5422,7 @@ SWIGINTERN PyObject *_wrap_delete_GenericNetwork(PyObject *SWIGUNUSEDPARM(self),
   arg1 = reinterpret_cast< GNMGenericNetworkShadow * >(argp1);
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -5463,7 +5519,7 @@ SWIGINTERN PyObject *_wrap_GenericNetwork_ConnectFeatures(PyObject *SWIGUNUSEDPA
   arg7 = static_cast< GNMDirection >(val7);
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -5533,7 +5589,7 @@ SWIGINTERN PyObject *_wrap_GenericNetwork_DisconnectFeatures(PyObject *SWIGUNUSE
   }
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -5583,7 +5639,7 @@ SWIGINTERN PyObject *_wrap_GenericNetwork_DisconnectFeaturesWithId(PyObject *SWI
   }
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -5680,7 +5736,7 @@ SWIGINTERN PyObject *_wrap_GenericNetwork_ReconnectFeatures(PyObject *SWIGUNUSED
   arg7 = static_cast< GNMDirection >(val7);
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -5735,7 +5791,7 @@ SWIGINTERN PyObject *_wrap_GenericNetwork_CreateRule(PyObject *SWIGUNUSEDPARM(se
   }
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -5777,7 +5833,7 @@ SWIGINTERN PyObject *_wrap_GenericNetwork_DeleteAllRules(PyObject *SWIGUNUSEDPAR
   arg1 = reinterpret_cast< GNMGenericNetworkShadow * >(argp1);
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -5832,7 +5888,7 @@ SWIGINTERN PyObject *_wrap_GenericNetwork_DeleteRule(PyObject *SWIGUNUSEDPARM(se
   }
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -5874,7 +5930,7 @@ SWIGINTERN PyObject *_wrap_GenericNetwork_GetRules(PyObject *SWIGUNUSEDPARM(self
   arg1 = reinterpret_cast< GNMGenericNetworkShadow * >(argp1);
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -5973,6 +6029,12 @@ SWIGINTERN PyObject *_wrap_GenericNetwork_ConnectPointsByLines(PyObject *SWIGUNU
         char *pszStr;
         Py_ssize_t nLen;
         PyObject* pyUTF8Str = PyUnicode_AsUTF8String(pyObj);
+        if( !pyUTF8Str )
+        {
+          Py_DECREF(pyObj);
+          PyErr_SetString(PyExc_TypeError,"invalid Unicode sequence");
+          SWIG_fail;
+        }
 #if PY_VERSION_HEX >= 0x03000000
         PyBytes_AsStringAndSize(pyUTF8Str, &pszStr, &nLen);
 #else
@@ -6019,7 +6081,7 @@ SWIGINTERN PyObject *_wrap_GenericNetwork_ConnectPointsByLines(PyObject *SWIGUNU
   arg6 = static_cast< GNMDirection >(val6);
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -6086,7 +6148,7 @@ SWIGINTERN PyObject *_wrap_GenericNetwork_ChangeBlockState(PyObject *SWIGUNUSEDP
   arg3 = static_cast< bool >(val3);
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;
@@ -6137,7 +6199,7 @@ SWIGINTERN PyObject *_wrap_GenericNetwork_ChangeAllBlockState(PyObject *SWIGUNUS
   }
   {
     if ( bUseExceptions ) {
-      CPLErrorReset();
+      ClearErrorState();
     }
     {
       SWIG_PYTHON_THREAD_BEGIN_ALLOW;

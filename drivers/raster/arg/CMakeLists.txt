@@ -5,7 +5,7 @@
 ################################################################################
 # Copyright (C) 2015-2017, NextGIS <info@nextgis.com>
 # Copyright (C) 2016 Mikhail Gusev
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
 # to deal in the Software without restriction, including without limitation
@@ -33,7 +33,7 @@ if(ENABLE_ARG)
     set(FORMAT_DEFINITIONS ${FORMAT_DEFINITIONS} "-DFRMT_arg" PARENT_SCOPE)
 
     include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-    include_directories(${CMAKE_SOURCE_DIR}/drivers/raster/raw)
+    include_directories(${CMAKE_SOURCE_DIR}/drivers/raster/raw)    
     include_directories(${CMAKE_SOURCE_DIR}/drivers/vector/geojson)
 
     set(LIB_HHEADERS
@@ -43,7 +43,7 @@ if(ENABLE_ARG)
     )
 
     set(LIB_CSOURCES
-        argdataset.cpp	
+        argdataset.cpp
     )
 
     add_library(${TARGET_NAME} OBJECT ${LIB_HHEADERS} ${LIB_HHEADERS_PRIV} ${LIB_CSOURCES})
@@ -51,5 +51,5 @@ if(ENABLE_ARG)
     # build target
     set(TARGET_OBJECTS ${TARGET_OBJECTS} $<TARGET_OBJECTS:${TARGET_NAME}> PARENT_SCOPE)
 else()
-    warning_msg("Skip arg")  
+    warning_msg("Skip arg")
 endif()

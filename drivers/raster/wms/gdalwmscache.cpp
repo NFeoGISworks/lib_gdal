@@ -4,10 +4,10 @@
  * Purpose:  Implementation of Dataset and RasterBand classes for WMS
  *           and other similar services.
  * Author:   Adam Nowacki, nowak@xpam.de
- * Author:   Dmitry Baryshnikov, <polimax@mail.ru>
  *
  ******************************************************************************
  * Copyright (c) 2007, Adam Nowacki
+ * Copyright (c) 2017, Dmitry Baryshnikov, <polimax@mail.ru>
  * Copyright (c) 2017, NextGIS, <info@nextgis.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -29,26 +29,11 @@
  * DEALINGS IN THE SOFTWARE.
  ****************************************************************************/
 
+#include "cpl_md5.h"
 #include "wmsdriver.h"
 
-CPL_CVSID("$Id$");
+CPL_CVSID("$Id$")
 
-//<Cache>	Enable local disk cache. Allows for offline operation. (optional,
-//          defaults to no cache)
-//    <Path>./gdalwmscache</Path>	Location where to store cache files.
-//                                  It is safe to use same cache path for
-//                                  different data sources. (optional, defaults
-//                                  to ./gdalwmscache if GDAL_DEFAULT_WMS_CACHE_PATH
-//                                  configuration option is not specified)
-//    <Depth>2</Depth>	Number of directory layers. 2 will result in files being
-//                      written as cache_path/A/B/ABCDEF... (optional, defaults to 2)
-//    <Extension>.jpg</Extension>	Append to cache files. (optional, defaults to none)
-//    <Type>file</Type> Cache type. Default is "file". Now supports only file.
-//    <Expires>604800</Expires> Time in secons to store data in cache. Deafult
-//                              value is 7 days (604800s)
-//    <MaxSize>67108864</MaxSize>   Maximum cache size in bytes. Default value is
-//                                  64 Mb (67108864 bytes)
-//</Cache>
 
 static void CleanCacheThread( void *pData )
 {
@@ -57,38 +42,38 @@ static void CleanCacheThread( void *pData )
 }
 
 //------------------------------------------------------------------------------
-// FileCache
+// GDALWMSFileCache
 //------------------------------------------------------------------------------
-class FileCache : public GDALWMSCacheImpl
+class GDALWMSFileCache : public GDALWMSCacheImpl
 {
 public:
-    FileCache(const CPLString& soPath, CPLXMLNode *pConfig) :
+    GDALWMSFileCache(const CPLString& soPath, CPLXMLNode *pConfig) :
         GDALWMSCacheImpl(soPath, pConfig),
         m_osPostfix(""),
         m_nDepth(2),
-        m_nExpires(604800),
-        m_nMaxSize(67108864)
+        m_nExpires(604800),   // 7 days
+        m_nMaxSize(67108864)  // 64 Mb
     {
         const char *pszCacheDepth = CPLGetXMLValue( pConfig, "Depth", "2" );
-        if( pszCacheDepth != NULL )
+        if( pszCacheDepth != nullptr )
             m_nDepth = atoi( pszCacheDepth );
 
-        const char *pszCacheExtension = CPLGetXMLValue( pConfig, "Extension", NULL );
-        if( pszCacheExtension != NULL )
+        const char *pszCacheExtension = CPLGetXMLValue( pConfig, "Extension", nullptr );
+        if( pszCacheExtension != nullptr )
             m_osPostfix = pszCacheExtension;
 
-        const char *pszCacheExpires = CPLGetXMLValue( pConfig, "Expires", NULL );
-        if( pszCacheExpires != NULL )
+        const char *pszCacheExpires = CPLGetXMLValue( pConfig, "Expires", nullptr );
+        if( pszCacheExpires != nullptr )
         {
             m_nExpires = atoi( pszCacheExpires );
             CPLDebug("WMS", "Cache expires in %d sec", m_nExpires);
         }
-        const char *pszCacheMaxSize = CPLGetXMLValue( pConfig, "MaxSize", NULL );
-        if( pszCacheMaxSize != NULL )
-            m_nMaxSize = atoi( pszCacheMaxSize );
+        const char *pszCacheMaxSize = CPLGetXMLValue( pConfig, "MaxSize", nullptr );
+        if( pszCacheMaxSize != nullptr )
+            m_nMaxSize = atol( pszCacheMaxSize );
     }
 
-    virtual CPLErr Insert(const char *pszKey, const CPLString &osFileName) CPL_OVERRIDE
+    virtual CPLErr Insert(const char *pszKey, const CPLString &osFileName) override
     {
         // Warns if it fails to write, but returns success
         CPLString soFilePath = GetFilePath( pszKey );
@@ -101,52 +86,52 @@ public:
         return CE_None;
     }
 
-    virtual enum GDALWMSCacheItemStatus GetItemStatus(const char *pszKey) const CPL_OVERRIDE
+    virtual enum GDALWMSCacheItemStatus GetItemStatus(const char *pszKey) const override
     {
         VSIStatBufL  sStatBuf;
         if( VSIStatL( GetFilePath(pszKey), &sStatBuf ) == 0 )
         {
-            long seconds = time( NULL ) - sStatBuf.st_mtime;
+            long seconds = static_cast<long>( time( nullptr ) - sStatBuf.st_mtime );
             return seconds < m_nExpires ? CACHE_ITEM_OK : CACHE_ITEM_EXPIRED;
         }
         return  CACHE_ITEM_NOT_FOUND;
     }
 
-    virtual GDALDataset* GetDataset(const char *pszKey, char **papszOpenOptions) const CPL_OVERRIDE
+    virtual GDALDataset* GetDataset(const char *pszKey, char **papszOpenOptions) const override
     {
         return reinterpret_cast<GDALDataset*>(
                     GDALOpenEx( GetFilePath( pszKey ), GDAL_OF_RASTER |
-                               GDAL_OF_READONLY | GDAL_OF_VERBOSE_ERROR, NULL,
-                               papszOpenOptions, NULL ) );
+                               GDAL_OF_READONLY | GDAL_OF_VERBOSE_ERROR, nullptr,
+                               papszOpenOptions, nullptr ) );
     }
 
-    virtual void Clean() CPL_OVERRIDE
+    virtual void Clean() override
     {
         char **papszList = VSIReadDirRecursive( m_soPath );
-        if( papszList == NULL )
+        if( papszList == nullptr )
         {
             return;
         }
 
         int counter = 0;
         std::vector<int> toDelete;
-        off_t nSize = 0;
-        long nTime = time( NULL );
-        while( papszList[counter] != NULL )
+        long nSize = 0;
+        time_t nTime = time( nullptr );
+        while( papszList[counter] != nullptr )
         {
-            const char* pszPath = CPLFormFilename( m_soPath, papszList[counter], NULL );
+            const char* pszPath = CPLFormFilename( m_soPath, papszList[counter], nullptr );
             VSIStatBufL sStatBuf;
             if( VSIStatL( pszPath, &sStatBuf ) == 0 )
             {
                 if( !VSI_ISDIR( sStatBuf.st_mode ) )
                 {
-                    long seconds = nTime - sStatBuf.st_mtime;
+                    long seconds = static_cast<long>( nTime - sStatBuf.st_mtime );
                     if(seconds > m_nExpires)
                     {
                         toDelete.push_back(counter);
                     }
 
-                    nSize += sStatBuf.st_size;
+                    nSize += static_cast<long>( sStatBuf.st_size );
                 }
             }
             counter++;
@@ -154,20 +139,18 @@ public:
 
         if( nSize > m_nMaxSize )
         {
-            CPLDebug( "WMS", "Delete %ld items from cache", toDelete.size());
+            CPLDebug( "WMS", "Delete %u items from cache",
+                                    static_cast<unsigned int>(toDelete.size()) );
             for( size_t i = 0; i < toDelete.size(); ++i )
             {
                 const char* pszPath = CPLFormFilename( m_soPath,
                                                        papszList[toDelete[i]],
-                                                       NULL );
+                                                       nullptr );
                 VSIUnlink( pszPath );
             }
         }
 
         CSLDestroy(papszList);
-
-        // Prevent very frequently execution
-        CPLSleep(15);
     }
 
 private:
@@ -214,47 +197,55 @@ private:
     CPLString m_osPostfix;
     int m_nDepth;
     int m_nExpires;
-    int m_nMaxSize;
+    long m_nMaxSize;
 };
 
 //------------------------------------------------------------------------------
 // GDALWMSCache
 //------------------------------------------------------------------------------
+#define CLEAN_THREAD_RUN_TIMEOUT 120 // 3 min
 
 GDALWMSCache::GDALWMSCache() :
     m_osCachePath("./gdalwmscache"),
-    m_hCleanThread(NULL),
-    m_poCache(NULL)
+    m_bIsCleanThreadRunning(false),
+    m_nCleanThreadLastRunTime(0),
+    m_poCache(nullptr),
+    m_hThread(nullptr)
 {
 
 }
 
 GDALWMSCache::~GDALWMSCache()
 {
-
+    if( m_hThread )
+        CPLJoinThread(m_hThread);
+    delete m_poCache;
 }
 
 CPLErr GDALWMSCache::Initialize(const char *pszUrl, CPLXMLNode *pConfig) {
-    const char *pszXmlCachePath = CPLGetXMLValue( pConfig, "Path", NULL );
+    const char *pszXmlCachePath = CPLGetXMLValue( pConfig, "Path", nullptr );
     const char *pszUserCachePath = CPLGetConfigOption( "GDAL_DEFAULT_WMS_CACHE_PATH",
-                                                     NULL );
-    if( pszXmlCachePath != NULL )
+                                                     nullptr );
+    if( pszXmlCachePath != nullptr )
     {
         m_osCachePath = pszXmlCachePath;
     }
-    else if( pszUserCachePath != NULL )
+    else if( pszUserCachePath != nullptr )
     {
         m_osCachePath = pszUserCachePath;
     }
 
     // Separate folder for each unique dataset url
-    m_osCachePath = CPLFormFilename( m_osCachePath, CPLMD5String( pszUrl ), NULL );
+    if( CPLTestBool( CPLGetXMLValue( pConfig, "Unique", "True" ) ) )
+    {
+        m_osCachePath = CPLFormFilename( m_osCachePath, CPLMD5String( pszUrl ), nullptr );
+    }
 
     // TODO: Add sqlite db cache type
     const char *pszType = CPLGetXMLValue( pConfig, "Type", "file" );
     if( EQUAL(pszType, "file") )
     {
-        m_poCache = new FileCache(m_osCachePath, pConfig);
+        m_poCache = new GDALWMSFileCache(m_osCachePath, pConfig);
     }
 
     return CE_None;
@@ -262,16 +253,19 @@ CPLErr GDALWMSCache::Initialize(const char *pszUrl, CPLXMLNode *pConfig) {
 
 CPLErr GDALWMSCache::Insert(const char *pszKey, const CPLString &soFileName)
 {
-    if( m_poCache != NULL && pszKey != NULL )
+    if( m_poCache != nullptr && pszKey != nullptr )
     {
         // Add file to cache
         CPLErr result = m_poCache->Insert(pszKey, soFileName);
         if( result == CE_None )
         {
             // Start clean thread
-            if( m_hCleanThread == NULL)
+            if( !m_bIsCleanThreadRunning && time(nullptr) - m_nCleanThreadLastRunTime > CLEAN_THREAD_RUN_TIMEOUT)
             {
-                m_hCleanThread = CPLCreateJoinableThread(CleanCacheThread, this);
+                if( m_hThread )
+                    CPLJoinThread(m_hThread);
+                m_bIsCleanThreadRunning = true;
+                m_hThread = CPLCreateJoinableThread(CleanCacheThread, this);
             }
         }
         return result;
@@ -282,7 +276,7 @@ CPLErr GDALWMSCache::Insert(const char *pszKey, const CPLString &soFileName)
 
 enum GDALWMSCacheItemStatus GDALWMSCache::GetItemStatus(const char *pszKey) const
 {
-    if( m_poCache != NULL )
+    if( m_poCache != nullptr )
     {
         return m_poCache->GetItemStatus(pszKey);
     }
@@ -292,20 +286,21 @@ enum GDALWMSCacheItemStatus GDALWMSCache::GetItemStatus(const char *pszKey) cons
 GDALDataset* GDALWMSCache::GetDataset(const char *pszKey,
                                       char **papszOpenOptions) const
 {
-    if( m_poCache != NULL )
+    if( m_poCache != nullptr )
     {
         return m_poCache->GetDataset(pszKey, papszOpenOptions);
     }
-    return NULL;
+    return nullptr;
 }
 
 void GDALWMSCache::Clean()
 {
-    if( m_poCache != NULL )
+    if( m_poCache != nullptr )
     {
         CPLDebug("WMS", "Clean cache");
         m_poCache->Clean();
     }
 
-    m_hCleanThread = NULL;
+    m_nCleanThreadLastRunTime = time( nullptr );
+    m_bIsCleanThreadRunning = false;
 }
